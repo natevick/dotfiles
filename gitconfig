@@ -1,0 +1,20 @@
+[user]
+	name = Nate Vick
+	email = nate.vick@hint.io
+[push]
+	default = simple
+[github]
+	user = nvick
+[core]
+	excludesfile = ~/.gitignore_global
+	editor = code --wait
+[credential]
+	helper = cache
+[init]
+	defaultBranch = main
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
