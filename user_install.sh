@@ -15,7 +15,7 @@ sh -c "$(wget -O- https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/maste
 
 echo "Installing dotfiles with rcup" >> ~/install.log
 
-rcup -d $SCRIPT_DIR -f tmux.conf zshrc gitconfig
+rcup -d $SCRIPT_DIR -f -B docker tmux.conf zshrc gitconfig
 
 echo "Installing solargraph" >> ~/install.log
 gem install solargraph
