@@ -98,10 +98,7 @@ function docker.set_ruby_version {
 function code-remote {
   p=$(printf "%s" "$1" | xxd -p) && code --folder-uri "vscode-remote://dev-container+${p//[[:space:]]/}/$2"
 }
-# Example aliases
-# alias zshconfig="mate ~/.zshrc"
-# alias ohmyzsh="mate ~/.oh-my-zsh"
-#
+
 alias zrc="code ~/.zshrc"
 alias tmrc="code ~/.tmux.conf"
 alias xcopy="xclip -selection c"
