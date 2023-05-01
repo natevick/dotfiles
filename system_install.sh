@@ -23,7 +23,12 @@ if [ `which apt` ]; then
 elif [ `which apk` ]; then
    sudo apk add rcm zsh iproute2
 elif [ `which yum` ]; then
-  sudo yum -y install zsh
+  cd /etc/yum.repos.d/
+  sudo curl -LO https://download.opensuse.org/repositories/utilities/15.5/utilities.repo
+
+  cd ~
+
+  sudo yum -y update && sudo yum -y install zsh rcm
 else
    echo "UNKNOWN LINUX DISTRO"
    exit 1
