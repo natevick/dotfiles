@@ -21,9 +21,9 @@ if [ `which apt` ]; then
   sudo apt-get install -o Dpkg::Options::="--force-confold" -yq rcm netcat zsh iproute2
 
 elif [ `which apk` ]; then
-   apk add rcm zsh iproute2
+   sudo apk add rcm zsh iproute2
 elif [ `which yum` ]; then
-  yum install rcm zsh iproute2
+  sudo yum install rcm zsh iproute2
 else
    echo "UNKNOWN LINUX DISTRO"
    exit 1
