@@ -23,7 +23,7 @@ if [ `which apt` ]; then
 elif [ `which apk` ]; then
    sudo apk add rcm zsh iproute2
 elif [ `which yum` ]; then
-  sudo yum install rcm zsh iproute2
+  sudo yum -y install zsh
 else
    echo "UNKNOWN LINUX DISTRO"
    exit 1
