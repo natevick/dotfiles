@@ -1,0 +1,14 @@
+[user]
+	name = Nate Vick
+	email = nate.vick@hint.io
+[push]
+	default = simple
+[github]
+	user = nvick
+[core]
+	excludesfile = ~/.gitignore_global
+	editor = code --wait
+[init]
+	defaultBranch = main
+[pull]
+  rebase = false
