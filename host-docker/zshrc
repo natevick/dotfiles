@@ -90,14 +90,7 @@ fi
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
-#
-function docker.set_ruby_version {
-  export RUBY_VERSION=$1
-}
 
-function code-remote {
-  p=$(printf "%s" "$1" | xxd -p) && code --folder-uri "vscode-remote://dev-container+${p//[[:space:]]/}/$2"
-}
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
@@ -110,8 +103,6 @@ alias xpaste="xclip -selection clipboard -o"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 export PATH=~/.local/bin:$PATH
-
-export PATH="$(yarn global bin):$PATH"
 
 fpath=(~/.zsh/completion $fpath)
 
