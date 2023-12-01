@@ -99,6 +99,10 @@ function code-remote {
   p=$(printf "%s" "$1" | xxd -p) && code --folder-uri "vscode-remote://dev-container+${p//[[:space:]]/}/$2"
 }
 
+selective() {
+  SELECTIVE_RUN_ID=$(echo $RANDOM) bundle exec selective rspec "$@"
+}
+
 alias zrc="code ~/.zshrc"
 alias tmrc="code ~/.tmux.conf"
 alias xcopy="xclip -selection c"
