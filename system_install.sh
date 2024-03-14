@@ -18,7 +18,7 @@ if [ `which apt` ]; then
 
   # Install RCM
   sudo apt-get update
-  sudo apt-get install -o Dpkg::Options::="--force-confold" -yq rcm netcat zsh iproute2
+  sudo apt-get install -o Dpkg::Options::="--force-confold" -yq rcm netcat-openbsd zsh iproute2
 
 elif [ `which apk` ]; then
    sudo apk add rcm zsh iproute2
