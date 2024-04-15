@@ -91,17 +91,10 @@ fi
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
 #
-function docker.set_ruby_version {
-  export RUBY_VERSION=$1
-}
 
-function code-remote {
-  p=$(printf "%s" "$1" | xxd -p) && code --folder-uri "vscode-remote://dev-container+${p//[[:space:]]/}/$2"
-}
-
-selective() {
-  SELECTIVE_RUN_ID=$(echo $(date +%s) bundle exec selective rspec "$@"
-}
+# selective() {
+#   SELECTIVE_RUN_ID=$(echo $(date +%s) bundle exec selective rspec "$@"
+# }
 
 alias zrc="code ~/.zshrc"
 alias tmrc="code ~/.tmux.conf"
@@ -117,10 +110,14 @@ eval "$(op completion zsh)"; compdef _op op
 
 export PATH=~/.local/bin:$PATH
 
-export PATH="$(yarn global bin):$PATH"
+#export PATH="$(yarn global bin):$PATH"
+
+. "$HOME/.asdf/asdf.sh"
 
 fpath=(~/.zsh/completion $fpath)
+fpath=(${ASDF_DIR}/completions $fpath)
 
 autoload -Uz compinit && compinit -i
 
-kitty + complete setup zsh | source /dev/stdin
+#kitty + complete setup zsh | source /dev/stdin
+export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
