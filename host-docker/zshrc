@@ -100,7 +100,8 @@ alias tmrc="code ~/.tmux.conf"
 alias xcopy="xclip -selection c"
 alias xpaste="xclip -selection clipboard -o"
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+# Set up fzf key bindings and fuzzy completion
+source <(fzf --zsh)
 
 export PATH=~/.local/bin:$PATH
 
