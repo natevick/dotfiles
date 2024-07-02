@@ -15,6 +15,3 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 echo "Installing dotfiles with rcup" >> ~/install.log
 
 rcup -d $SCRIPT_DIR -f -B docker tmux.conf zshrc gitconfig
-
-echo "Installing solargraph" >> ~/install.log
-gem install solargraph
