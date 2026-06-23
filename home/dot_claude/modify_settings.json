@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script for ~/.claude/settings.json.
+#
+# Merges ONLY the portable prefs below into the existing file, leaving everything
+# else (enabledMcpjsonServers, enabledPlugins, extraKnownMarketplaces, the
+# app-written feedbackSurveyState, etc.) exactly as the machine/app left it.
+# Per-machine secrets live in the git-ignored settings.local.json.
+#
+# Note: the keys listed here become chezmoi-owned — change them in the dotfiles,
+# not via the UI (a UI change to one of these is reverted on the next `chezmoi apply`).
+
+current=$(cat)
+[ -z "$current" ] && current='{}'
+
+# Locate jq (mise shim / brew / system). If absent (e.g. a brand-new machine
+# before mise has installed it), pass the file through untouched so `apply` never
+# fails — the prefs land on the next apply once jq is present.
+JQ=$(command -v jq 2>/dev/null || true)
+[ -z "$JQ" ] && [ -x "$HOME/.local/share/mise/shims/jq" ] && JQ="$HOME/.local/share/mise/shims/jq"
+[ -z "$JQ" ] && [ -x /opt/homebrew/bin/jq ] && JQ=/opt/homebrew/bin/jq
+if [ -z "$JQ" ]; then printf '%s' "$current"; exit 0; fi
+
+merged=$(printf '%s' "$current" | "$JQ" '
+    .statusLine               = {"type": "command", "command": "bash ~/.claude/statusline.sh"}
+  | .effortLevel              = "xhigh"
+  | .alwaysThinkingEnabled    = true
+  | .editorMode               = "normal"
+  | .skipWorkflowUsageWarning = true
+  | .agentPushNotifEnabled    = true
+  | .remoteControlAtStartup   = true
+  | .skipAutoPermissionPrompt = true
+' 2>/dev/null)
+
+# On any jq error (malformed input), leave the file untouched rather than wipe it.
+if [ -n "$merged" ]; then printf '%s' "$merged"; else printf '%s' "$current"; fi
