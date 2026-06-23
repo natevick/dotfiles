@@ -1,18 +1,18 @@
 [user]
-	name = Nate Vick
-	email = nate.vick@hint.io
+	name = {{ .name }}
+	email = {{ .email }}
 [push]
 	default = simple
 [core]
 	excludesfile = ~/.gitignore_global
-	editor = code --wait
+	editor = {{ if .headless }}vim{{ else if eq .chezmoi.os "darwin" }}cursor --wait{{ else }}code --wait{{ end }}
 [init]
 	defaultBranch = main
 [credential "https://github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper =
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper =
+	helper = !gh auth git-credential
 [alias]
 	fixup = "!fn() { _FIXUP_COMMIT=`git log -n 50 --pretty=format:'%h %s' --no-merges | fzf | cut -c -7` && git commit -m \"fixup! ${_FIXUP_COMMIT}\" && GIT_EDITOR=true git rebase --autosquash -i ${_FIXUP_COMMIT}^; }; fn"

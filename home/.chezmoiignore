@@ -1,0 +1,2 @@
+# Per-machine escape hatch — sourced by .zshrc if present, never managed by chezmoi
+.config/zsh/local.zsh

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+# cli-tools hash: {{ include "dot_config/mise/conf.d/cli-tools.toml.tmpl" | sha256sum }}
+export PATH="$HOME/.local/bin:$PATH"
+echo "==> Installing CLI tools via mise"
+mise install -y

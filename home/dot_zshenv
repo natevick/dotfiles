@@ -1,0 +1,4 @@
+# ~/.zshenv — managed by chezmoi. Sourced for all zsh invocations (interactive, non-interactive, login).
+# Keep this minimal: env vars only, no output, no interactive features.
+
+export PATH="$HOME/.local/bin:$PATH"

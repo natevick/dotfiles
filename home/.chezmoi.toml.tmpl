@@ -1,0 +1,22 @@
+{{- /* Auto-detect container environments */ -}}
+{{- $container := false -}}
+{{- if or (env "CODESPACES") (env "REMOTE_CONTAINERS") (env "DEVCONTAINER") -}}
+{{-   $container = true -}}
+{{- end -}}
+{{- if stat "/.dockerenv" -}}
+{{-   $container = true -}}
+{{- end -}}
+{{- /* Identity prompts (defaults make --promptDefaults non-interactive) */ -}}
+{{- $name := promptStringOnce . "name" "Full name for git" "Nate Vick" -}}
+{{- $email := promptStringOnce . "email" "Email for git" "nate.vick@clickfunnels.com" -}}
+{{- /* Containers are always headless; otherwise ask once */ -}}
+{{- $headless := $container -}}
+{{- if not $container -}}
+{{-   $headless = promptBoolOnce . "headless" "Headless machine (server, no GUI)" false -}}
+{{- end -}}
+
+[data]
+    name = {{ $name | quote }}
+    email = {{ $email | quote }}
+    headless = {{ $headless }}
+    container = {{ $container }}

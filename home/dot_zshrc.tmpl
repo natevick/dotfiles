@@ -1,0 +1,81 @@
+# ~/.zshrc — managed by chezmoi. Edit source: `chezmoi edit ~/.zshrc`
+
+# ---- PATH ----
+export PATH="$HOME/.local/bin:$PATH"
+{{- if eq .chezmoi.os "darwin" }}
+export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+{{- end }}
+
+# ---- History ----
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE INC_APPEND_HISTORY EXTENDED_HISTORY
+setopt AUTO_CD INTERACTIVE_COMMENTS
+
+# ---- Editor ----
+{{- if .headless }}
+export EDITOR=vim
+{{- else }}
+if [[ -n $SSH_CONNECTION ]]; then
+  export EDITOR=vim
+else
+  export EDITOR={{ if eq .chezmoi.os "darwin" }}cursor{{ else }}code{{ end }}
+fi
+{{- end }}
+
+# ---- Autoloaded functions ----
+if [[ -d "$HOME/.config/zsh/functions" ]]; then
+  fpath=("$HOME/.config/zsh/functions" $fpath)
+  _zfns=("$HOME"/.config/zsh/functions/*(N:t))
+  (( ${#_zfns} )) && autoload -Uz "${_zfns[@]}"
+  unset _zfns
+fi
+
+# ---- cached tool init (avoid a subprocess fork on every startup) ----
+# Caches an init/activation script; regenerates only when the tool's binary changes.
+# Note: -nt does NOT detect a tool DOWNGRADE (older mtime) — `rm -rf ~/.cache/zsh` to force a rebuild.
+_eval_cached() {
+  emulate -L zsh
+  local name=$1; shift
+  local bin=$1 binpath
+  binpath=$(command -v "$bin") || return 0
+  local cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/${name}.zsh"
+  if [[ ! -f "$cache" || "$binpath" -nt "$cache" ]]; then
+    mkdir -p "${cache:h}"
+    if "$@" >| "$cache.tmp" 2>/dev/null && [[ -s "$cache.tmp" ]]; then
+      mv "$cache.tmp" "$cache"
+    else
+      rm -f "$cache.tmp"
+    fi
+  fi
+  [[ -f "$cache" ]] && source "$cache"
+}
+
+# ---- mise (sync: tools must be on PATH before completions/prompt) ----
+_eval_cached mise mise activate zsh
+
+# ---- zinit ----
+ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
+[[ -f "$ZINIT_HOME/zinit.zsh" ]] && source "$ZINIT_HOME/zinit.zsh"
+
+# ---- starship (sync: prompt paints immediately) ----
+_eval_cached starship starship init zsh
+
+# ---- turbo plugins + aliases ----
+[[ -f "$HOME/.config/zsh/plugins.zsh" ]] && source "$HOME/.config/zsh/plugins.zsh"
+[[ -f "$HOME/.config/zsh/aliases.zsh" ]] && source "$HOME/.config/zsh/aliases.zsh"
+
+# ---- fzf + zoxide ----
+_eval_cached fzf fzf --zsh
+_eval_cached zoxide zoxide init zsh
+
+# ---- vendor integrations (guarded; no-op when tool absent) ----
+command -v op &>/dev/null && { eval "$(op completion zsh)"; compdef _op op; }
+[[ -f "$HOME/.config/op/plugins.sh" ]] && source "$HOME/.config/op/plugins.sh"
+[[ -d "$HOME/.grok/bin" ]] && { export PATH="$HOME/.grok/bin:$PATH"; fpath=("$HOME/.grok/completions/zsh" $fpath); }
+[[ -f "$HOME/.openclaw/completions/openclaw.zsh" ]] && source "$HOME/.openclaw/completions/openclaw.zsh"
+[[ -d "$HOME/.composio" ]] && export PATH="$HOME/.composio:$PATH"
+
+# ---- machine-local escape hatch (chezmoi-ignored) ----
+[[ -f "$HOME/.config/zsh/local.zsh" ]] && source "$HOME/.config/zsh/local.zsh"
