@@ -32,4 +32,4 @@ merged=$(printf '%s' "$current" | "$JQ" '
 ' 2>/dev/null)
 
 # On any jq error (malformed input), leave the file untouched rather than wipe it.
-if [ -n "$merged" ]; then printf '%s' "$merged"; else printf '%s' "$current"; fi
+if [ -n "$merged" ]; then printf '%s\n' "$merged"; else printf '%s\n' "$current"; fi
