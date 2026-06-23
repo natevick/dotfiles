@@ -1,2 +1,5 @@
 # Per-machine escape hatch — sourced by .zshrc if present, never managed by chezmoi
 .config/zsh/local.zsh
+
+# Work-specific tooling kept local (not in this public repo); existing copies left intact.
+.config/zsh/functions/rails-console
