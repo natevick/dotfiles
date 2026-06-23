@@ -85,6 +85,16 @@ _eval_cached starship starship init zsh
 _eval_cached fzf fzf --zsh
 _eval_cached zoxide zoxide init zsh
 
+# ---- history prefix-search on Up/Down (OMZ-style) ----
+# Type a prefix, then Up/Down cycles only through history entries starting with it.
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search; bindkey '^[OA' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search; bindkey '^[OB' down-line-or-beginning-search
+[[ -n "${terminfo[kcuu1]}" ]] && bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
+[[ -n "${terminfo[kcud1]}" ]] && bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
+
 # ---- vendor integrations (guarded; no-op when tool absent) ----
 # `op completion zsh` already emits its own `compdef _op op` (queued by the stub above).
 command -v op &>/dev/null && eval "$(op completion zsh)"
