@@ -36,7 +36,9 @@ ctxbar() {
 }
 
 # --- path: ~ for home, keep last two segments ---
-disp="${cwd/#$HOME/~}"
+# (build manually: bash 5.2+ tilde-expands the replacement in ${x/#$HOME/~}, so a
+#  literal ~ would expand back to $HOME and the abbreviation would silently no-op.)
+if [[ -n "$HOME" && "$cwd" == "$HOME"* ]]; then disp="~${cwd#"$HOME"}"; else disp="$cwd"; fi
 short=$(awk -F/ '{n=NF; if(n>2) printf "…/%s/%s",$(n-1),$n; else print}' <<<"$disp")
 
 # --- git: branch + dirty marker ---
