@@ -60,6 +60,20 @@ _eval_cached mise mise activate zsh
 ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
 [[ -f "$ZINIT_HOME/zinit.zsh" ]] && source "$ZINIT_HOME/zinit.zsh"
 
+# ---- deferred compinit plumbing ----
+# compinit runs in the turbo block (after the first prompt), so `compdef` does not
+# exist at rc-load — completions registered then (e.g. `op completion`) would error.
+# Queue those calls; the turbo block flushes them once compinit restores the real
+# `compdef` (which overrides this stub).
+typeset -ga _DEFERRED_COMPDEFS
+compdef() { _DEFERRED_COMPDEFS+=("${(j: :)@}") }
+_flush_deferred_compdefs() {
+  (( $#_DEFERRED_COMPDEFS )) || return
+  local c
+  for c in "${_DEFERRED_COMPDEFS[@]}"; do compdef ${=c}; done
+  _DEFERRED_COMPDEFS=()
+}
+
 # ---- starship (sync: prompt paints immediately) ----
 _eval_cached starship starship init zsh
 
@@ -72,7 +86,8 @@ _eval_cached fzf fzf --zsh
 _eval_cached zoxide zoxide init zsh
 
 # ---- vendor integrations (guarded; no-op when tool absent) ----
-command -v op &>/dev/null && { eval "$(op completion zsh)"; compdef _op op; }
+# `op completion zsh` already emits its own `compdef _op op` (queued by the stub above).
+command -v op &>/dev/null && eval "$(op completion zsh)"
 [[ -f "$HOME/.config/op/plugins.sh" ]] && source "$HOME/.config/op/plugins.sh"
 [[ -d "$HOME/.grok/bin" ]] && { export PATH="$HOME/.grok/bin:$PATH"; fpath=("$HOME/.grok/completions/zsh" $fpath); }
 [[ -f "$HOME/.openclaw/completions/openclaw.zsh" ]] && source "$HOME/.openclaw/completions/openclaw.zsh"
