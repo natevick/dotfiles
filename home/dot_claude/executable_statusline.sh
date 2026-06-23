@@ -14,6 +14,8 @@ ctx_left=$(jq -r  '.context_window.remaining_percentage // empty' <<<"$input")
 ctx_pct=$(jq -r   '.context_window.used_percentage // empty'   <<<"$input")
 rl_5h=$(jq -r '.rate_limits.five_hour.used_percentage // empty' <<<"$input")
 rl_7d=$(jq -r '.rate_limits.seven_day.used_percentage // empty' <<<"$input")
+session_name=$(jq -r '.session_name // empty' <<<"$input")
+session_id=$(jq -r   '.session_id // empty'   <<<"$input")
 
 # --- catppuccin mocha truecolor ---
 mauve=$'\033[38;2;203;166;247m'
@@ -95,6 +97,15 @@ if [ -n "$style" ] && [ "$style" != "default" ] && [ "$style" != "null" ]; then
   style_seg="${sep}${dim}${style}${rst}"
 fi
 
-printf "%s%s%s%s%s%s%s%s%s" \
+line1=$(printf "%s%s%s%s%s%s%s%s%s" \
   "${mauve}${model}${rst}" "${sep}" "${blue}${short}${rst}" \
-  "$git_seg" "$ctx_seg" "$diff_seg" "$cost_seg" "$rl_seg" "$style_seg"
+  "$git_seg" "$ctx_seg" "$diff_seg" "$cost_seg" "$rl_seg" "$style_seg")
+
+# --- line 2: full cwd + session name (falls back to a short session id) ---
+sess=""
+if   [ -n "$session_name" ]; then sess="$session_name"
+elif [ -n "$session_id" ];   then sess="${session_id:0:8}"; fi
+line2="${dim} ${disp}${rst}"
+[ -n "$sess" ] && line2="${line2}${sep}${dim} ${sess}${rst}"
+
+printf '%s\n%s' "$line1" "$line2"
