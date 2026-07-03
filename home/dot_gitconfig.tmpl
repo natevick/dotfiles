@@ -5,7 +5,7 @@
 	default = simple
 [core]
 	excludesfile = ~/.gitignore_global
-	editor = {{ if .headless }}vim{{ else if eq .chezmoi.os "darwin" }}cursor --wait{{ else }}code --wait{{ end }}
+	editor = vim
 [init]
 	defaultBranch = main
 [credential "https://github.com"]
