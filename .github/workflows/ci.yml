@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # *.tmpl scripts contain Go template syntax and can't be shellchecked raw
+      - name: shellcheck plain shell scripts
+        run: |
+          shellcheck install.sh home/run_once_after_install-zinit.sh
+          shellcheck --shell=bash home/dot_claude/modify_settings.json
+
+  # Acceptance gate from the migration design: a throwaway container applies the
+  # repo non-interactively via install.sh and lands a working shell.
+  bootstrap:
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    env:
+      DEVCONTAINER: "1" # deterministic container-profile detection
+    steps:
+      - name: Install base packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl git zsh ca-certificates xz-utils unzip
+      - uses: actions/checkout@v4
+      - name: Bootstrap via install.sh
+        run: ./install.sh
+      - name: Shell boots cleanly
+        run: |
+          out=$(zsh -i -c 'echo BOOTSTRAP_OK' 2>&1)
+          echo "$out"
+          echo "$out" | grep -q BOOTSTRAP_OK
+          if echo "$out" | grep -iE 'command not found|no such file|parse error'; then
+            echo "shell startup emitted errors" >&2
+            exit 1
+          fi
+      - name: Container profile applied and tools resolve
+        run: |
+          "$HOME/.local/bin/chezmoi" data | grep -q '"container": true'
+          zsh -i -c 'command -v starship && command -v fzf && command -v zoxide && command -v jq'
