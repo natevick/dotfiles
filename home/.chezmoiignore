@@ -8,3 +8,10 @@
 {{ if or (ne .chezmoi.os "darwin") .headless }}
 .claude/skills/use-spark
 {{ end }}
+
+# Agent-owned accounts (e.g. Norm): ~/.claude is the agent's identity and brain.
+# Nothing under it is ever managed — no statusline, no settings merge, no CLAUDE.md.
+{{ if .agent }}
+.claude
+.claude/**
+{{ end }}

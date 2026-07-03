@@ -14,6 +14,11 @@
 {{- if not $container -}}
 {{-   $headless = promptBoolOnce . "headless" "Headless machine (server, no GUI)" false -}}
 {{- end -}}
+{{- /* Agent-owned account (e.g. Norm): ~/.claude is the agent's own brain — never manage it */ -}}
+{{- $agent := false -}}
+{{- if not $container -}}
+{{-   $agent = promptBoolOnce . "agent" "Agent-owned account (leave ~/.claude unmanaged)" false -}}
+{{- end -}}
 
 {{- /* Record the repo as sourceDir so bare `chezmoi` commands work from anywhere; */ -}}
 {{- /* workingTree (not sourceDir) so .chezmoiroot keeps resolving home/ */ -}}
@@ -24,3 +29,4 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
     email = {{ $email | quote }}
     headless = {{ $headless }}
     container = {{ $container }}
+    agent = {{ $agent }}
