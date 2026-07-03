@@ -1,0 +1,6 @@
+# Dev tooling for working on this repo (repo-meta — not applied to machines).
+# `mise install` then `pre-commit install` to set up the git hooks.
+[tools]
+pre-commit = "latest"
+shellcheck = "latest"
+gitleaks = "latest"
