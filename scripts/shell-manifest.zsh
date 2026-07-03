@@ -2,9 +2,11 @@
 # identical across OSes. Run inside an interactive shell so the full config is
 # loaded: zsh -i -c 'source scripts/shell-manifest.zsh'
 #
-# Deliberately excluded (differ per-OS by design): EDITOR (cursor/code/vim),
-# clipboard aliases xcopy/xpaste (pbcopy vs wl-copy vs xclip), PATH.
+# Deliberately excluded (differ per-OS by design): clipboard aliases
+# xcopy/xpaste (pbcopy vs wl-copy vs xclip), PATH.
 zmodload zsh/parameter
+
+echo "env:EDITOR=${EDITOR:-MISSING}"
 
 for t in mise starship fzf zoxide jq eza bat fd rg tmux vim; do
   if command -v "$t" >/dev/null 2>&1; then echo "tool:$t=present"; else echo "tool:$t=MISSING"; fi

@@ -14,15 +14,7 @@ setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE INC_APPEND_HISTORY EXTEN
 setopt AUTO_CD INTERACTIVE_COMMENTS
 
 # ---- Editor ----
-{{- if .headless }}
 export EDITOR=vim
-{{- else }}
-if [[ -n $SSH_CONNECTION ]]; then
-  export EDITOR=vim
-else
-  export EDITOR={{ if eq .chezmoi.os "darwin" }}cursor{{ else }}code{{ end }}
-fi
-{{- end }}
 
 # ---- Autoloaded functions ----
 if [[ -d "$HOME/.config/zsh/functions" ]]; then
