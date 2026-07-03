@@ -44,7 +44,7 @@ jobs:
             echo "shell contract has missing pieces on ${{ runner.os }}" >&2
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: manifest-${{ runner.os }}
           path: manifest-*.txt
@@ -54,7 +54,7 @@ jobs:
     needs: manifest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           merge-multiple: true
       - name: Manifests match across OSes
