@@ -95,6 +95,25 @@ _eval_cached op op completion zsh
 [[ -f "$HOME/.openclaw/completions/openclaw.zsh" ]] && source "$HOME/.openclaw/completions/openclaw.zsh"
 [[ -d "$HOME/.composio" ]] && export PATH="$HOME/.composio:$PATH"
 
+# ---- chezmoi drift nudge ----
+# Shows once when the live machine has drifted from the dotfiles source, then
+# clears. The actual check runs in a detached background job at most once a
+# day; the sync path here is fork-free (stamp read + zsh builtins only).
+() {
+  local dc="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/chezmoi-drift"
+  if [[ -s "$dc.out" ]]; then
+    local out=$(<"$dc.out")
+    print -P "%F{yellow}chezmoi drift:%f ${out//$'\n'/, } — review with 'chezmoi diff'"
+    : >| "$dc.out"
+  fi
+  zmodload zsh/datetime
+  local today; strftime -s today '%Y%m%d' "$EPOCHSECONDS"
+  if [[ "$(<"$dc.stamp")" != "$today" ]] 2>/dev/null; then
+    print "$today" >| "$dc.stamp" 2>/dev/null
+    command -v chezmoi &>/dev/null && ( chezmoi status 2>/dev/null >| "$dc.out.tmp" && mv "$dc.out.tmp" "$dc.out" ) &>/dev/null &!
+  fi
+}
+
 # ---- machine-local escape hatch (chezmoi-ignored) ----
 # if-form, not `[[ ]] &&`: a missing local.zsh must not leave the shell with $?=1
 if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then source "$HOME/.config/zsh/local.zsh"; fi
