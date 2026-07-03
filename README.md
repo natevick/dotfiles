@@ -16,7 +16,9 @@ Point your dotfiles setting at `github.com/natevick/dotfiles`; it runs
 ## Shell tools & aliases
 
 Modern CLI tools are installed via [mise](https://mise.jdx.dev) (`~/.config/mise/conf.d/cli-tools.toml`):
-`fzf`, `eza`, `bat`, `fd`, `ripgrep`, `zoxide`, `starship`. All shell wiring lives in
+`fzf`, `eza`, `bat`, `fd`, `ripgrep`, `zoxide`, `starship`. `tmux` and `vim` (the git editor) are
+installed by the bootstrap via the native package manager (brew/apt/dnf/apk) when missing —
+the only true prerequisites are `zsh`, `git`, and `curl`. All shell wiring lives in
 `home/dot_config/zsh/aliases.zsh` and is `command -v`-guarded, so anything missing degrades to the
 native command.
 

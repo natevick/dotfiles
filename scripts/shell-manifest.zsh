@@ -6,7 +6,7 @@
 # clipboard aliases xcopy/xpaste (pbcopy vs wl-copy vs xclip), PATH.
 zmodload zsh/parameter
 
-for t in mise starship fzf zoxide jq eza bat fd rg; do
+for t in mise starship fzf zoxide jq eza bat fd rg tmux vim; do
   if command -v "$t" >/dev/null 2>&1; then echo "tool:$t=present"; else echo "tool:$t=MISSING"; fi
 done
 
