@@ -4,7 +4,7 @@ Dotfiles managed with [chezmoi](https://chezmoi.io). Source root is `home/` (via
 
 ## Hard rules
 
-- **This repo is public.** No work-specific tooling, hostnames, IPs, or secrets — machine-local/secret shell config goes in `~/.config/zsh/local.zsh` (chezmoi-ignored). See commit fdd04d3 for a past leak cleanup.
+- **This repo is public.** No work-specific tooling, hostnames, IPs, or secrets — machine-local/secret shell config goes in `~/.config/zsh/local.zsh` (chezmoi-ignored), and work-specific Claude agents/commands/skills and zsh functions go in the private overlay repo (`dotfiles-work`, symlink-installed via its own `install.sh`). See commit fdd04d3 for a past leak cleanup.
 - **Always `chezmoi diff` before `chezmoi apply`.** Drift here has been bidirectional; a blind apply can revert live hotfixes that were never back-ported.
 - Shell startup budget: `zsh -i -c exit` < 80ms. Nothing new loads synchronously before the prompt without justification.
 

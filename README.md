@@ -63,3 +63,4 @@ On macOS, `Alt-C` needs the terminal set to treat Option as Meta (Esc+); `Ctrl-T
 - `chezmoi cd` — drop into the source repo
 
 Per-machine/secret junk goes in `~/.config/zsh/local.zsh` (git-ignored, sourced last).
+Work machines additionally clone the private `dotfiles-work` overlay and run its `install.sh`.
