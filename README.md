@@ -58,6 +58,7 @@ On macOS, `Alt-C` needs the terminal set to treat Option as Meta (Esc+); `Ctrl-T
 ## Day-to-day
 
 - `chezmoi edit ~/.zshrc` — edit a managed file
+- `chezmoi diff` — preview what apply would change (always run first)
 - `chezmoi apply` — apply changes
 - `chezmoi cd` — drop into the source repo
 
