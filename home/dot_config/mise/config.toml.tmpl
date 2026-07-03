@@ -1,0 +1,10 @@
+[settings]
+idiomatic_version_file_enable_tools = ["ruby", "node", "yarn", "bun"]
+
+[settings.ruby]
+compile = false
+{{- if not .container }}
+
+[tools]
+node = "22"
+{{- end }}
