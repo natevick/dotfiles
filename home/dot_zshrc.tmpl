@@ -104,4 +104,5 @@ _eval_cached op op completion zsh
 [[ -d "$HOME/.composio" ]] && export PATH="$HOME/.composio:$PATH"
 
 # ---- machine-local escape hatch (chezmoi-ignored) ----
-[[ -f "$HOME/.config/zsh/local.zsh" ]] && source "$HOME/.config/zsh/local.zsh"
+# if-form, not `[[ ]] &&`: a missing local.zsh must not leave the shell with $?=1
+if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then source "$HOME/.config/zsh/local.zsh"; fi
