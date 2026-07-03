@@ -3,3 +3,8 @@
 
 # Work-specific tooling kept local (not in this public repo); existing copies left intact.
 .config/zsh/functions/rails-console
+
+# use-spark talks to the Spark Desktop app over IPC — pointless without a Mac GUI
+{{ if or (ne .chezmoi.os "darwin") .headless }}
+.claude/skills/use-spark
+{{ end }}
