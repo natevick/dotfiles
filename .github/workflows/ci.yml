@@ -44,3 +44,22 @@ jobs:
         run: |
           "$HOME/.local/bin/chezmoi" data | grep -q '"container": true'
           zsh -i -c 'command -v starship && command -v fzf && command -v zoxide && command -v jq'
+
+  # On failure, hand the context to the norm-webhooks server (tailnet-only) so it can
+  # attempt an auto-fix. Runs only when a needed job failed; needs no secrets in this file.
+  report-failure:
+    needs: [shellcheck, bootstrap]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # gh run view --log-failed
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/report-ci-failure
+        with:
+          tailscale-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          tailscale-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          webhook-url: ${{ secrets.WEBHOOK_URL }}
+          webhook-secret: ${{ secrets.WEBHOOK_HMAC_SECRET }}
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
