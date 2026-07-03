@@ -97,7 +97,7 @@ bindkey '^[[B' down-line-or-beginning-search; bindkey '^[OB' down-line-or-beginn
 
 # ---- vendor integrations (guarded; no-op when tool absent) ----
 # `op completion zsh` already emits its own `compdef _op op` (queued by the stub above).
-command -v op &>/dev/null && eval "$(op completion zsh)"
+_eval_cached op op completion zsh
 [[ -f "$HOME/.config/op/plugins.sh" ]] && source "$HOME/.config/op/plugins.sh"
 [[ -d "$HOME/.grok/bin" ]] && { export PATH="$HOME/.grok/bin:$PATH"; fpath=("$HOME/.grok/completions/zsh" $fpath); }
 [[ -f "$HOME/.openclaw/completions/openclaw.zsh" ]] && source "$HOME/.openclaw/completions/openclaw.zsh"
