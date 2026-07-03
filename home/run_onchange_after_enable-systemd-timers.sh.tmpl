@@ -1,0 +1,13 @@
+{{ if and (eq .chezmoi.os "linux") (not .agent) (not .container) -}}
+#!/bin/sh
+# (Re)enables systemd user timers when their units change.
+# units hash: {{ include "dot_config/systemd/user/claude-memory-backup.service" | sha256sum }} {{ include "dot_config/systemd/user/claude-memory-backup.timer" | sha256sum }}
+set -eu
+command -v systemctl >/dev/null 2>&1 || exit 0
+systemctl --user daemon-reload
+systemctl --user enable --now claude-memory-backup.timer
+# keep timers firing when logged out (best-effort; may need sudo on some setups)
+loginctl enable-linger "$(id -un)" 2>/dev/null || sudo -n loginctl enable-linger "$(id -un)" 2>/dev/null || \
+  echo "==> note: run 'loginctl enable-linger' manually so timers fire while logged out"
+echo "==> systemd timer enabled: claude-memory-backup.timer"
+{{ end -}}

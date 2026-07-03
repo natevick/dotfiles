@@ -14,6 +14,9 @@ DEST="$WORK/claude-memory"
 PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 
+# multiple machines push to this repo — sync before mirroring
+cd "$WORK" && git pull --rebase -q origin main 2>/dev/null || true
+
 found=0
 for d in "$SRC"/*/memory; do
   [ -d "$d" ] || continue
@@ -30,5 +33,6 @@ git diff --cached --quiet && exit 0
 msg="chore: claude memory backup $(date +%Y-%m-%d)"
 # hygiene hooks may auto-fix files on the first try; re-add and retry once
 git commit -qm "$msg" || { git add claude-memory; git commit -qm "$msg"; }
-git push -q origin main
+# lost a push race with another machine? rebase and retry once
+git push -q origin main || { git pull --rebase -q origin main && git push -q origin main; }
 echo "claude-memory: backed up $(git rev-parse --short HEAD)"

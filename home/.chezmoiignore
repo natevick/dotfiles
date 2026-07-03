@@ -15,6 +15,12 @@ Library
 Library/**
 {{ end }}
 
+# systemd user units are Linux-only; agent accounts schedule their own work
+{{ if or (ne .chezmoi.os "linux") .agent .container }}
+.config/systemd
+.config/systemd/**
+{{ end }}
+
 # Agent-owned accounts (e.g. Norm): ~/.claude is the agent's identity and brain.
 # Nothing under it is ever managed — no statusline, no settings merge, no CLAUDE.md.
 {{ if .agent }}

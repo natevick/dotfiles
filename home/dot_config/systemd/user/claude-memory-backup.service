@@ -1,0 +1,6 @@
+[Unit]
+Description=Mirror Claude Code memory into the private dotfiles-work repo
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/claude-memory-backup
