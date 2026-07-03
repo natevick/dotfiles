@@ -1,3 +1,11 @@
+# Managed base config. Machine-local tools go in ~/.config/mise/config.toml
+# (unmanaged — mise merges it with this file).
+[settings]
+idiomatic_version_file_enable_tools = ["ruby", "node", "yarn", "bun"]
+
+[settings.ruby]
+compile = false
+
 [tools]
 fzf = "latest"
 zoxide = "latest"
@@ -8,4 +16,5 @@ eza = "latest"
 bat = "latest"
 fd = "latest"
 ripgrep = "latest"
+node = "22"
 {{- end }}
