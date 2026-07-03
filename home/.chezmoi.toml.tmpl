@@ -15,6 +15,10 @@
 {{-   $headless = promptBoolOnce . "headless" "Headless machine (server, no GUI)" false -}}
 {{- end -}}
 
+{{- /* Record the repo as sourceDir so bare `chezmoi` commands work from anywhere; */ -}}
+{{- /* workingTree (not sourceDir) so .chezmoiroot keeps resolving home/ */ -}}
+sourceDir = {{ .chezmoi.workingTree | quote }}
+
 [data]
     name = {{ $name | quote }}
     email = {{ $email | quote }}
