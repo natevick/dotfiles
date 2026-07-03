@@ -18,7 +18,7 @@ repos:
         entry: shellcheck
         language: system
         types: [shell]
-        exclude: '\.tmpl$' # Go template syntax isn't valid shell
+        exclude: '\.(tmpl|zsh)$' # Go templates aren't shell; shellcheck can't parse zsh
       - id: shellcheck-modify-scripts
         name: shellcheck (chezmoi modify_ scripts)
         entry: shellcheck --shell=bash
@@ -28,4 +28,10 @@ repos:
         name: gitleaks (staged secrets scan)
         entry: gitleaks git --pre-commit --redact --staged --verbose
         language: system
+        pass_filenames: false
+      - id: shell-startup-budget
+        name: shell startup budget (median < 80ms)
+        entry: scripts/check-shell-startup.zsh
+        language: script
+        files: '^home/(dot_zshrc\.tmpl|dot_config/(zsh|mise)/)'
         pass_filenames: false
