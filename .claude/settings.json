@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chezmoi status)",
+      "Bash(chezmoi status *)",
+      "Bash(chezmoi diff)",
+      "Bash(chezmoi diff *)",
+      "Bash(chezmoi managed)",
+      "Bash(chezmoi managed *)",
+      "Bash(gh run watch *)",
+      "Bash(rwx lint *)",
+      "Bash(rwx results *)",
+      "Bash(rwx runs *)",
+      "Bash(rwx logs *)",
+      "Bash(helm template *)"
+    ]
+  }
+}
