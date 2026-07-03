@@ -1,0 +1,64 @@
+name: Weekly cross-OS validation
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Mondays 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  # Full workstation-profile install on real macOS and Ubuntu runners (not the
+  # lean container profile that ci.yml exercises), then emit the shell contract.
+  manifest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install zsh (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Bootstrap via install.sh
+        run: ./install.sh
+      - name: Shell boots cleanly
+        run: |
+          out=$(zsh -i -c 'echo BOOT_OK' 2>&1)
+          echo "$out"
+          echo "$out" | grep -q BOOT_OK
+          if echo "$out" | grep -iE 'command not found|no such file|parse error'; then
+            echo "shell startup emitted errors" >&2
+            exit 1
+          fi
+      - name: Startup timing (informational — runners are shared hardware)
+        run: zsh scripts/check-shell-startup.zsh || true
+        env:
+          BUDGET_MS: "1000"
+      - name: Generate shell manifest
+        run: |
+          zsh -i -c 'source scripts/shell-manifest.zsh' 2>/dev/null | sort > "manifest-${{ runner.os }}.txt"
+          cat "manifest-${{ runner.os }}.txt"
+      - name: No MISSING entries
+        run: |
+          if grep MISSING "manifest-${{ runner.os }}.txt"; then
+            echo "shell contract has missing pieces on ${{ runner.os }}" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifest-${{ runner.os }}
+          path: manifest-*.txt
+
+  # The actual "works the same on both OSes" gate: the manifests must be identical.
+  compare:
+    needs: manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Manifests match across OSes
+        run: |
+          ls -l manifest-*.txt
+          diff -u manifest-Linux.txt manifest-macOS.txt
+          echo "macOS and Linux shell contracts are identical"

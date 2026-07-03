@@ -36,3 +36,4 @@ Two auto-detected dimensions + one prompt, set at `chezmoi init` in `home/.chezm
 - The Claude statusline needs `jq`; it's in the mise cli-tools list for that reason.
 - `~/.gitignore_global` is the global git ignore (`core.excludesfile`). Git's default `~/.config/git/ignore` is unused here — don't add to it.
 - CI (`.github/workflows/ci.yml`) runs `install.sh` in a throwaway Ubuntu container as the acceptance gate: non-interactive bootstrap must land a working shell. Keep it green.
+- Weekly cross-OS validation (`.github/workflows/weekly.yml`, Mondays + manual dispatch): full workstation-profile install on real macOS and Ubuntu runners; `scripts/shell-manifest.zsh` emits the shell contract (tools, aliases, fzf wiring, history opts) and the run fails if the two OSes diverge. Per-OS-by-design items (EDITOR, clipboard aliases, PATH) are excluded from the manifest.
