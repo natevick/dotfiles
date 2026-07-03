@@ -10,7 +10,9 @@ zinit wait lucid for \
     zsh-users/zsh-completions
 
 # Oh-My-Zsh snippets (aliases + completions only — no omz framework load)
+# OMZL::git.zsh supplies git_current_branch & friends that the git aliases call
 zinit wait lucid for \
+  OMZL::git.zsh \
   OMZP::git \
   OMZP::docker \
   OMZP::docker-compose \
