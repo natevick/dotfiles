@@ -1,0 +1,87 @@
+name: Report CI failure
+description: >-
+  On a failed run, briefly join the tailnet (ephemeral node), build a signed
+  failure-context payload, and POST it to the norm-webhooks server. Contains no
+  hostnames/secrets — every host-specific value is injected from repo secrets.
+
+inputs:
+  tailscale-oauth-client-id:
+    description: Tailscale OAuth client id (scoped to tag:ci)
+    required: true
+  tailscale-oauth-secret:
+    description: Tailscale OAuth client secret
+    required: true
+  webhook-url:
+    description: Full URL of the github-ci webhook endpoint (kept in a secret so the tailnet name stays out of public history)
+    required: true
+  webhook-secret:
+    description: Shared HMAC secret used to sign the payload
+    required: true
+  gh-token:
+    description: Token used only to fetch the failed run's logs (the built-in GITHUB_TOKEN is fine)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Join the tailnet as an ephemeral tag:ci node. Reaped automatically after the job.
+    - name: Join tailnet (ephemeral)
+      uses: tailscale/github-action@v3
+      with:
+        oauth-client-id: ${{ inputs.tailscale-oauth-client-id }}
+        oauth-secret: ${{ inputs.tailscale-oauth-secret }}
+        tags: tag:ci
+
+    - name: Build, sign, and POST failure context
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        WEBHOOK_SECRET: ${{ inputs.webhook-secret }}
+      run: |
+        set -euo pipefail
+
+        # PR events: the interesting commit/branch is the PR head, not the merge ref.
+        HEAD_SHA="$(jq -r '.pull_request.head.sha // empty' "$GITHUB_EVENT_PATH" 2>/dev/null || true)"
+        HEAD_SHA="${HEAD_SHA:-$GITHUB_SHA}"
+        HEAD_BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+        PR_NUMBER="$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH" 2>/dev/null || true)"
+
+        # Best-effort failed-job logs. Never let a log-fetch problem block delivery.
+        # Keep only printable ASCII + tab/newline/CR so the excerpt is always valid JSON,
+        # then hard-cap. The server strips/caps again as defence in depth.
+        LOG="$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed 2>/dev/null \
+                | LC_ALL=C tr -cd '\11\12\15\40-\176' \
+                | tail -c 32768 || true)"
+
+        TS="$(date +%s)"
+        DELIVERY="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(openssl rand -hex 6)"
+        RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+        # pr_number is a real JSON number for PR events, null otherwise; null keys are dropped.
+        PR_JSON="null"; [ -n "$PR_NUMBER" ] && PR_JSON="$PR_NUMBER"
+
+        BODY="$(jq -cn \
+          --arg repo "$GITHUB_REPOSITORY" \
+          --arg run_id "$GITHUB_RUN_ID" \
+          --argjson run_attempt "${GITHUB_RUN_ATTEMPT:-1}" \
+          --arg head_sha "$HEAD_SHA" \
+          --arg head_branch "$HEAD_BRANCH" \
+          --arg event "$GITHUB_EVENT_NAME" \
+          --arg run_url "$RUN_URL" \
+          --arg log_excerpt "$LOG" \
+          --argjson pr_number "$PR_JSON" \
+          '{repo:$repo, run_id:$run_id, run_attempt:$run_attempt, head_sha:$head_sha,
+            head_branch:$head_branch, event:$event, run_url:$run_url,
+            log_excerpt:$log_excerpt, pr_number:$pr_number}
+           | with_entries(select(.value != null))')"
+
+        # HMAC-SHA256 over "<timestamp>.<body>" — the exact bytes the server re-signs.
+        SIG="$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | awk '{print $NF}')"
+
+        curl -sS --max-time 20 --fail-with-body -X POST "$WEBHOOK_URL" \
+          -H 'Content-Type: application/json' \
+          -H "X-Webhook-Timestamp: $TS" \
+          -H "X-Webhook-Delivery: $DELIVERY" \
+          -H "X-Hub-Signature-256: sha256=$SIG" \
+          --data-raw "$BODY"

@@ -62,3 +62,22 @@ jobs:
           ls -l manifest-*.txt
           diff -u manifest-Linux.txt manifest-macOS.txt
           echo "macOS and Linux shell contracts are identical"
+
+  # Mirror of ci.yml's failure reporter: on any failed job, hand context to the
+  # tailnet-only norm-webhooks server for an auto-fix attempt.
+  report-failure:
+    needs: [manifest, compare]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # gh run view --log-failed
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/report-ci-failure
+        with:
+          tailscale-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          tailscale-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          webhook-url: ${{ secrets.WEBHOOK_URL }}
+          webhook-secret: ${{ secrets.WEBHOOK_HMAC_SECRET }}
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
