@@ -1,0 +1,11 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# (Re)loads launchd agents when their plists change.
+# plist hash: {{ include "Library/LaunchAgents/com.natevick.claude-memory-backup.plist" | sha256sum }}
+set -eu
+PLIST="$HOME/Library/LaunchAgents/com.natevick.claude-memory-backup.plist"
+UID_N=$(id -u)
+launchctl bootout "gui/$UID_N/com.natevick.claude-memory-backup" 2>/dev/null || true
+launchctl bootstrap "gui/$UID_N" "$PLIST"
+echo "==> launchd agent loaded: com.natevick.claude-memory-backup"
+{{ end -}}

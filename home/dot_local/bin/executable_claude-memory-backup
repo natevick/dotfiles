@@ -1,0 +1,34 @@
+#!/bin/sh
+# Mirrors ~/.claude/projects/*/memory into the private dotfiles-work repo and
+# pushes. Runs from launchd daily (com.natevick.claude-memory-backup); safe to
+# run by hand. No-ops quietly if the private repo isn't cloned on this machine.
+set -eu
+
+WORK="$HOME/.dotfiles-work"
+SRC="$HOME/.claude/projects"
+DEST="$WORK/claude-memory"
+[ -d "$WORK/.git" ] || exit 0
+[ -d "$SRC" ] || exit 0
+
+# launchd has a bare PATH — hooks (pre-commit/gitleaks via mise) and gh need these
+PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+found=0
+for d in "$SRC"/*/memory; do
+  [ -d "$d" ] || continue
+  found=1
+  proj=$(basename "$(dirname "$d")")
+  mkdir -p "$DEST/$proj"
+  rsync -a --delete "$d/" "$DEST/$proj/"
+done
+[ "$found" -eq 1 ] || exit 0
+
+cd "$WORK"
+git add claude-memory
+git diff --cached --quiet && exit 0
+msg="chore: claude memory backup $(date +%Y-%m-%d)"
+# hygiene hooks may auto-fix files on the first try; re-add and retry once
+git commit -qm "$msg" || { git add claude-memory; git commit -qm "$msg"; }
+git push -q origin main
+echo "claude-memory: backed up $(git rev-parse --short HEAD)"

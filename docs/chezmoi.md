@@ -30,6 +30,12 @@ Two auto-detected dimensions + one prompt, set at `chezmoi init` in `home/.chezm
 - `.container` — auto-true when `/.dockerenv` or `$CODESPACES`/`$REMOTE_CONTAINERS`/`$DEVCONTAINER`. Containers get the lean toolset (`{{ if not .container }}` gates in the mise tomls) and are always headless.
 - `.headless` — prompted once; forces vim, skips GUI bits.
 
+## Automation
+
+- **Drift nudge**: `.zshrc` checks `chezmoi status` in a detached background job at most once a day and prints a one-shot warning at the next shell start if the machine drifted from the source.
+- **Memory backup** (macOS): a launchd agent (`com.natevick.claude-memory-backup`, daily 10:15) mirrors `~/.claude/projects/*/memory` into the private `dotfiles-work` repo and pushes. Script: `~/.local/bin/claude-memory-backup`; log: `/tmp/claude-memory-backup.log`.
+- **Dependabot** PRs GitHub Actions bumps weekly; CI validates them.
+
 ## Traps
 
 - **Keys in `home/dot_claude/modify_settings.json` are chezmoi-owned.** Change them in this repo, not the Claude Code UI — a UI change to one of those keys is reverted on the next apply. Everything else in `~/.claude/settings.json` is left alone by the merge.
