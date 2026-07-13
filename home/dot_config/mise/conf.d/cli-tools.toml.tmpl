@@ -12,7 +12,13 @@ zoxide = "latest"
 starship = "latest"
 jq = "latest"      # required by the Claude Code statusline script
 {{- if not .container }}
+{{- if eq .chezmoi.os "darwin" }}
+# eza ships no macOS release binary, so mise falls through to cargo-quickinstall
+# which 404s for new versions on darwin. The Homebrew bottle is reliable.
+"brew:eza" = "latest"
+{{- else }}
 eza = "latest"
+{{- end }}
 bat = "latest"
 fd = "latest"
 ripgrep = "latest"
