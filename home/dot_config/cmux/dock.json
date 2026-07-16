@@ -13,7 +13,7 @@
     {
       "id": "host",
       "title": "Host",
-      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'btm --basic 2>/dev/null || btm || top'",
+      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'export PATH=\"$HOME/.local/share/mise/shims:$PATH\"; btm --basic 2>/dev/null || btm || top'",
       "height": 300
     }
   ]
