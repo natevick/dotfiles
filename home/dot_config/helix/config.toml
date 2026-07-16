@@ -1,0 +1,25 @@
+# Helix config — adopted from Norm's starter (2026-07-15). Tune freely; hx reloads with :config-reload.
+theme = "onedark"
+
+[editor]
+line-number = "relative"
+cursorline = true
+bufferline = "multiple"      # show open buffers as tabs
+color-modes = true           # mode shown by cursor/statusline color
+true-color = true            # ghostty/cmux handle it
+rulers = [100]
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+[editor.file-picker]
+hidden = false               # show dotfiles in the picker
+
+[editor.indent-guides]
+render = true
+character = "▏"
+
+[editor.soft-wrap]
+enable = true

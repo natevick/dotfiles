@@ -1,0 +1,20 @@
+# Language-server pins (adopted from Norm's setup; everything else uses helix
+# defaults, which already match: terraform-ls, typescript-language-server,
+# bash-language-server, yaml-language-server, taplo, elixir-ls).
+# Missing LSP binaries are harmless — helix just skips them.
+[language-server.ruby-lsp]
+command = "ruby-lsp"
+
+[[language]]
+name = "ruby"
+language-servers = ["ruby-lsp"]
+
+# Expert — the OFFICIAL Elixir LSP (expert-lsp/expert, core-team backed successor
+# to elixir-ls/Lexical). elixir-ls stays installed as fallback: swap the list back
+# to ["elixir-ls"] if expert misbehaves (it's v0.1.x).
+[language-server.expert]
+command = "expert"
+
+[[language]]
+name = "elixir"
+language-servers = ["expert"]
