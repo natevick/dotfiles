@@ -27,3 +27,10 @@ Library/**
 .claude
 .claude/**
 {{ end }}
+
+# cmux is a macOS app; its dock.json (with ssh -t commands run FROM the Mac) only
+# applies there. Ignore on non-Mac so agent/Linux hosts don't get a useless copy.
+{{ if ne .chezmoi.os "darwin" }}
+.config/cmux
+.config/cmux/**
+{{ end }}
