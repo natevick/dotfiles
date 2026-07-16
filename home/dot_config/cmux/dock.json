@@ -8,7 +8,7 @@
     {
       "id": "cron",
       "title": "Cron deliveries",
-      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'tail -n 20 -F /home/norm/norm-cron/logs/*.log'"
+      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'cd /home/norm/norm-cron/logs && tail -n 20 -F $(ls -tr *.log)'"
     },
     {
       "id": "host",
