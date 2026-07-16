@@ -20,6 +20,6 @@ node = "22"
 helix = "latest"
 bottom = "latest"    # `btm` — lighter, narrow-friendly; used by the cmux dock Host panel
 {{- if eq .chezmoi.os "linux" }}
-"ubi:aristocratos/btop" = "latest"   # btop via ubi backend (aqua asset-match is broken); Linux release binaries only
+"github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
 {{- end }}
 {{- end }}
