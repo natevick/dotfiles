@@ -1,0 +1,20 @@
+{
+  "controls": [
+    {
+      "id": "normsvc",
+      "title": "Norm service",
+      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'journalctl -u claude-remote -f -n 30 --no-pager --output=cat'"
+    },
+    {
+      "id": "cron",
+      "title": "Cron deliveries",
+      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'tail -n 20 -F /home/norm/norm-cron/logs/*.log'"
+    },
+    {
+      "id": "host",
+      "title": "Host",
+      "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'btm --basic 2>/dev/null || btm || top'",
+      "height": 300
+    }
+  ]
+}
