@@ -18,6 +18,8 @@ fd = "latest"
 ripgrep = "latest"
 node = "22"
 helix = "latest"
-btop = "latest"      # modern system monitor (eye-candy; best with width)
 bottom = "latest"    # `btm` — lighter, narrow-friendly; used by the cmux dock Host panel
+{{- if eq .chezmoi.os "linux" }}
+btop = "latest"      # modern system monitor; release binaries are Linux-only (macOS needs brew)
+{{- end }}
 {{- end }}
