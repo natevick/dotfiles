@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script for ~/.grok/config.toml.
+#
+# Owns ONLY the [ui] keys printed below; everything else — [cli] installer
+# state, [marketplace] sources, any keys grok adds later — is left exactly as
+# the machine/app left it. Change these keys in the dotfiles, not in grok: an
+# app-side change to an owned key is reverted on the next apply.
+# Auth lives in ~/.grok/auth.json, never here.
+
+awk '
+  function print_managed() {
+    print "max_thoughts_width = 120"
+    print "fork_secondary_model = \"grok-build\""
+    print "yolo = false"
+    print "compact_mode = false"
+    print "permission_mode = \"ask\""
+  }
+  /^\[ui\]/ { print; print_managed(); in_ui = 1; seen_ui = 1; next }
+  /^\[/ && !/^\[ui\]/ { in_ui = 0 }
+  in_ui && /^(max_thoughts_width|fork_secondary_model|yolo|compact_mode|permission_mode)[[:space:]]*=/ { next }
+  { print }
+  END {
+    if (!seen_ui) {
+      print ""
+      print "[ui]"
+      print_managed()
+    }
+  }
+'
