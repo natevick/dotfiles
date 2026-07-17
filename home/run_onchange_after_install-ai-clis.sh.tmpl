@@ -1,0 +1,29 @@
+#!/bin/sh
+# AI coding CLIs via their official native installers — all self-update in
+# place, so this only bootstraps (run_onchange re-fires when a tool is added
+# here, and the per-binary guards skip anything already installed). Skipped in
+# containers, which preinstall what they need.
+# grok lives in ~/.grok/bin (PATH + fpath wired in dot_zshrc.tmpl); claude and
+# codex install straight into ~/.local/bin. The grok and codex installers are
+# run with SHELL=/bin/sh so any PATH block they write lands in the unmanaged
+# ~/.profile instead of the managed zshrc (codex writes one whenever it spots a
+# conflicting install, even with ~/.local/bin already on PATH).
+set -eu
+{{- if not .container }}
+export PATH="$HOME/.local/bin:$PATH"
+
+if [ ! -x "$HOME/.local/bin/claude" ]; then
+  echo "==> Installing Claude Code"
+  curl -fsSL https://claude.ai/install.sh | bash
+fi
+
+if [ ! -x "$HOME/.local/bin/codex" ]; then
+  echo "==> Installing Codex CLI"
+  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 SHELL=/bin/sh sh
+fi
+
+if [ ! -x "$HOME/.grok/bin/grok" ]; then
+  echo "==> Installing Grok CLI"
+  curl -fsSL https://x.ai/cli/install.sh | SHELL=/bin/sh bash
+fi
+{{- end }}
