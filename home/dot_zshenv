@@ -2,3 +2,10 @@
 # Keep this minimal: env vars only, no output, no interactive features.
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# mise shims for non-interactive shells (cron, scripts, agent tool-runners).
+# Interactive shells get full `mise activate` in .zshrc, but that installs a
+# precmd hook which never fires without a prompt — aliases guarded by
+# `command -v bat/eza` get captured interactively, then break in
+# non-interactive execution where the shims are missing from PATH.
+[[ -d "$HOME/.local/share/mise/shims" ]] && export PATH="$HOME/.local/share/mise/shims:$PATH"
