@@ -1,6 +1,12 @@
 {
   "controls": [
     {
+      "id": "approvals",
+      "title": "Approvals",
+      "command": "until ssh -t natevick@norm-open-claw.long-godzilla.ts.net 'zsh -lc ~/norm-broker/bin/broker-approve'; do echo '[reconnecting]'; sleep 3; done",
+      "height": 260
+    },
+    {
       "id": "normsvc",
       "title": "Norm service",
       "command": "ssh -t norm@norm-open-claw.long-godzilla.ts.net 'journalctl -u claude-remote -f -n 30 --no-pager --output=cat'"
