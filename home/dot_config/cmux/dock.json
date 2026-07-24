@@ -3,8 +3,8 @@
     {
       "id": "approvals",
       "title": "Approvals",
-      "command": "until ssh -t natevick@norm-open-claw.long-godzilla.ts.net 'zsh -lc ~/norm-broker/bin/broker-approve'; do echo '[reconnecting]'; sleep 3; done",
-      "height": 260
+      "command": "until ssh -t natevick@norm-open-claw.long-godzilla.ts.net '~/norm-broker/bin/broker-approve'; do echo '[reconnecting]'; sleep 3; done",
+      "height": 320
     },
     {
       "id": "normsvc",
