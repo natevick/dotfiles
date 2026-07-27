@@ -12,18 +12,26 @@ set -eu
 {{- if not .container }}
 export PATH="$HOME/.local/bin:$PATH"
 
+# Each installer resolves its download through the GitHub release API, which
+# rate-limits shared IPs (CI runners get a 403). A missing optional CLI is not
+# worth aborting the whole apply over, so warn and carry on — rerun the curl
+# line by hand to retry.
+warn_skip() {
+  echo "!!! $1 install failed (network or rate limit) — skipping" >&2
+}
+
 if [ ! -x "$HOME/.local/bin/claude" ]; then
   echo "==> Installing Claude Code"
-  curl -fsSL https://claude.ai/install.sh | bash
+  curl -fsSL https://claude.ai/install.sh | bash || warn_skip "Claude Code"
 fi
 
 if [ ! -x "$HOME/.local/bin/codex" ]; then
   echo "==> Installing Codex CLI"
-  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 SHELL=/bin/sh sh
+  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 SHELL=/bin/sh sh || warn_skip "Codex CLI"
 fi
 
 if [ ! -x "$HOME/.grok/bin/grok" ]; then
   echo "==> Installing Grok CLI"
-  curl -fsSL https://x.ai/cli/install.sh | SHELL=/bin/sh bash
+  curl -fsSL https://x.ai/cli/install.sh | SHELL=/bin/sh bash || warn_skip "Grok CLI"
 fi
 {{- end }}
