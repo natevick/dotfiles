@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# gh — hand the GitHub CLI the same per-org PAT that git gets from
+# git-credential-github-org. Shadows the real gh because ~/.local/bin precedes
+# both the mise shims and /usr/bin on $PATH.
+#
+# Adapted from Ben's github-per-org-auth/gh. Norm's changes vs upstream:
+#   1. AUDIT: one JSONL line per invocation to $NORM_GH_AUDIT. Never the token.
+#   2. NO DEFAULT OWNER. Upstream falls back to a hardcoded `clickfunnels2` for
+#      repo-less calls (`gh api /user`, `gh search`), so a call with no repo
+#      context silently carries a work-org credential. Upstream's own comment
+#      says it "runs unauthenticated rather than guessing", which the code then
+#      contradicts. We do what the comment says.
+#   3. REAL_GH is resolved by scanning $PATH first, not a hardcoded list.
+#      Upstream's list starts at /usr/bin/gh, which on this box would bypass the
+#      mise-managed gh that would otherwise run and silently change versions.
+#   4. Owner validation, and support for POSITIONAL owner/repo (`gh repo view
+#      owner/repo`) which upstream never checks — despite its own README using
+#      exactly that as the verification step.
+set -euo pipefail
+
+TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
+AUDIT_LOG="${NORM_GH_AUDIT:-$HOME/.local/state/norm-gh-audit.jsonl}"
+
+# ── Audit ───────────────────────────────────────────────────────────────────
+# Fail-OPEN but LOUD, same reasoning as the credential helper: a record is not a
+# gate, but a silent gap is indistinguishable from "nothing happened".
+_audit() {
+  local event="$1" owner="${2:-}" token_file="${3:-}"
+  shift 3 2>/dev/null || true
+  local argv_json="[]" first=1 a
+  for a in "$@"; do
+    a="${a//\\/\\\\}"; a="${a//\"/\\\"}"
+    if [ $first -eq 1 ]; then argv_json="[\"$a\""; first=0; else argv_json="$argv_json,\"$a\""; fi
+  done
+  [ $first -eq 0 ] && argv_json="$argv_json]"
+  local line
+  printf -v line '{"ts":"%s","tool":"gh","event":"%s","owner":"%s","token_file":"%s","argv":%s,"pid":%d,"cwd":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$event" "$owner" "$token_file" "$argv_json" "$$" "$PWD" 2>/dev/null || return 0
+  # Create with 0600 BEFORE the first append. Relying on the ambient umask gave
+  # a world-readable 0644 log — the same defect I flagged in someone else's
+  # vault writer, so it gets fixed here rather than excused.
+  if ! { mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null \
+         && { [ -e "$AUDIT_LOG" ] || { : >"$AUDIT_LOG" && chmod 0600 "$AUDIT_LOG"; } ; } 2>/dev/null \
+         && printf '%s' "$line" >>"$AUDIT_LOG" 2>/dev/null; }; then
+    printf 'gh (wrapper): WARNING audit write failed (%s) — continuing\n' "$AUDIT_LOG" >&2
+  fi
+}
+
+# ── Locate the real gh ──────────────────────────────────────────────────────
+# Scan $PATH in order so we run whatever gh would have run without this
+# wrapper, but reject any candidate that could send control back to us.
+#
+# ⚠️ Learned the hard way. A first version scanned $PATH with only a
+# `readlink -f == self` guard and produced an INFINITE EXEC LOOP on this box:
+# the next $PATH entry was a mise shim, and for a tool mise is NOT actively
+# managing, that shim just re-resolves the command through $PATH — finding this
+# wrapper again. The two exec each other until "Argument list too long". The
+# self-guard cannot catch it, because the shim resolves to the `mise` binary,
+# not to us: the loop is INDIRECT.
+#
+# The fix is the predicate, not the ordering. Reject a candidate if it is us, if
+# it lives under a `shims/` directory, or if it resolves to a binary not named
+# `gh` (a real gh always resolves to something called gh; a punt-through shim
+# does not). The concrete system paths remain as a fallback.
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+
+_is_usable_gh() {
+  local cand="$1" resolved
+  [[ -x "$cand" && ! -d "$cand" ]] || return 1
+  resolved="$(readlink -f "$cand" 2>/dev/null)" || return 1
+  [[ "$resolved" == "$self" ]] && return 1              # us
+  [[ "$cand" == */shims/* ]] && return 1                # version-manager shim
+  [[ "$(basename "$resolved")" != "gh" ]] && return 1   # punts elsewhere (e.g. -> mise)
+  return 0
+}
+
+REAL_GH=""
+IFS=':' read -r -a _path_dirs <<<"$PATH"
+for d in "${_path_dirs[@]}"; do
+  [ -n "$d" ] || continue
+  _is_usable_gh "$d/gh" && { REAL_GH="$d/gh"; break; }
+done
+if [[ -z "$REAL_GH" ]]; then
+  for cand in /usr/bin/gh /usr/local/bin/gh /opt/homebrew/bin/gh; do
+    _is_usable_gh "$cand" && { REAL_GH="$cand"; break; }
+  done
+fi
+if [[ -z "$REAL_GH" ]]; then
+  echo "gh (wrapper): cannot find the real gh binary — only this wrapper is on PATH." >&2
+  _audit error "" "" "$@"
+  exit 127
+fi
+
+# ── When NOT to inject ──────────────────────────────────────────────────────
+# A token already in the env means the caller chose one deliberately (e.g. a
+# brokered `broker-run --cred GH_TOKEN`). Injecting over it would silently swap
+# in the narrow per-org token. Same precedence rule as the git helper.
+if [[ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]]; then
+  _audit stood_down "" "" "$@"
+  exec "$REAL_GH" "$@"
+fi
+
+# gh's own auth commands manage credentials themselves and refuse to run with a
+# token in the environment. Leave that path alone.
+# `git-credential` is included because the pre-existing gitconfig may still list
+# `!gh auth git-credential` as a helper; routing it through owner resolution
+# achieves nothing and just adds a no_owner line per git operation.
+if [[ "${1:-}" == "auth" && "${2:-}" =~ ^(login|logout|refresh|setup-git|status|token|git-credential)$ ]]; then
+  _audit auth_passthrough "" "" "$@"
+  exec "$REAL_GH" "$@"
+fi
+
+# ── Resolve the repo owner ──────────────────────────────────────────────────
+owner_from_spec() {
+  local spec="${1:-}"
+  spec="${spec#https://github.com/}"
+  spec="${spec#git@github.com:}"
+  spec="${spec#github.com/}"
+  printf '%s' "${spec%%/*}"
+}
+
+owner=""
+args=("$@")
+
+# 1. Explicit --repo / -R wins — it is what gh itself uses.
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[i]}" in
+    -R|--repo)   owner="$(owner_from_spec "${args[i+1]:-}")"; break ;;
+    --repo=*)    owner="$(owner_from_spec "${args[i]#--repo=}")"; break ;;
+    -R?*)        owner="$(owner_from_spec "${args[i]#-R}")"; break ;;
+  esac
+done
+
+# 2. gh's own GH_REPO env var.
+if [[ -z "$owner" && -n "${GH_REPO:-}" ]]; then
+  owner="$(owner_from_spec "$GH_REPO")"
+fi
+
+# 3. An owner embedded in a `gh api` path.
+if [[ -z "$owner" && "${1:-}" == "api" ]]; then
+  for arg in "$@"; do
+    [[ "$arg" == -* ]] && continue   # don't match flag values
+    if [[ "$arg" =~ (^|/)(repos|orgs|users)/([^/]+) ]]; then
+      owner="${BASH_REMATCH[3]}"; break
+    fi
+  done
+fi
+
+# 4. POSITIONAL owner/repo — upstream never checks this, so `gh repo view
+#    owner/repo` (the README's own verification command) fell through to the
+#    default token. Restricted to the subcommands that actually take a repo
+#    positionally, so a path argument like src/index.ts can't be mistaken for one.
+if [[ -z "$owner" && "${1:-}" == "repo" ]]; then
+  case "${2:-}" in
+    view|clone|fork|sync|rename|delete|set-default|deploy-key|license|gitignore)
+      for ((i = 2; i < ${#args[@]}; i++)); do
+        a="${args[i]}"
+        [[ "$a" == -* ]] && continue
+        if [[ "$a" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+          owner="$(owner_from_spec "$a")"; break
+        fi
+      done ;;
+  esac
+fi
+
+# 5. Fall back to the current repo's origin remote — what gh resolves against
+#    anyway when no --repo is given.
+if [[ -z "$owner" ]]; then
+  remote="$(git remote get-url origin 2>/dev/null || true)"
+  [[ -n "$remote" ]] && owner="$(owner_from_spec "$remote")"
+fi
+
+# 6. Still nothing. Upstream defaults to a hardcoded org here; we do NOT.
+#    A repo-less call carrying a credential the caller didn't choose is exactly
+#    the class of mistake the ambient path has no audit trail for. Run
+#    unauthenticated and let it fail visibly.
+if [[ -z "$owner" ]]; then
+  _audit no_owner "" "" "$@"
+  exec "$REAL_GH" "$@"
+fi
+
+owner="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
+
+if [[ ! "$owner" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  _audit rejected "$owner" "" "$@"
+  exec "$REAL_GH" "$@"
+fi
+
+# ── Load the token ──────────────────────────────────────────────────────────
+token_file="$TOKEN_DIR/$owner"
+if [[ ! -r "$token_file" ]]; then
+  for candidate in "$TOKEN_DIR"/*; do
+    [[ -f "$candidate" ]] || continue
+    if [[ "$(printf '%s' "${candidate##*/}" | tr '[:upper:]' '[:lower:]')" == "$owner" ]]; then
+      token_file="$candidate"; break
+    fi
+  done
+fi
+
+if [[ -r "$token_file" ]]; then
+  token="$(<"$token_file")"
+  token="${token//[$'\r\n\t ']/}"
+  if [[ -n "$token" ]]; then
+    _audit issued "$owner" "${token_file##*/}" "$@"
+    export GH_TOKEN="$token"
+    exec "$REAL_GH" "$@"
+  fi
+fi
+
+# No token for this owner: run unauthenticated rather than guessing with another
+# org's PAT.
+#
+# ⚠️ Verified by execution 2026-08-01, and NOT what upstream's comment claims:
+# `gh` does not degrade to anonymous access the way `git` does. With no token it
+# refuses outright — "To get started with GitHub CLI, please run: gh auth login"
+# — even for a PUBLIC repo. So for an owner with no token file, gh is simply
+# unusable via this path and the work has to go through the broker. `git` is the
+# asymmetric one: it clones public repos fine with no credential.
+# The audit line is what distinguishes this from a real "repo not found".
+_audit no_token "$owner" "" "$@"
+exec "$REAL_GH" "$@"

@@ -14,6 +14,10 @@ jobs:
       - name: shellcheck plain shell scripts
         run: |
           shellcheck install.sh home/*.sh
+          # ~/.local/bin shims. These shadow real binaries on $PATH (gh, git),
+          # so they are the most consequential shell in the repo — they were
+          # previously outside the linter's reach entirely.
+          shellcheck home/dot_local/bin/*
           shellcheck --shell=bash home/dot_claude/modify_settings.json
 
   # Acceptance gate from the migration design: a throwaway container applies the
