@@ -14,6 +14,28 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
+{{- if .agent }}
+# ── Agent hosts only: per-org fine-grained GitHub PATs ──────────────────────
+# An agent account holds one fine-grained PAT per GitHub org under
+# ~/.config/github-pats/<owner>; the helper picks one by lowercasing the owner
+# from the remote URL. Scope is enforced server-side by GitHub, so these tokens
+# are narrow enough to be ambient — no approval round-trip for a routine fetch.
+#
+# `helper =` resets the list accumulated above FIRST: for multi-valued keys git
+# APPENDS rather than replaces, so without the reset the `!gh auth
+# git-credential` helper would still be consulted ahead of this one. (On an
+# agent host gh is not logged in, so it only ever returned nothing.)
+#
+# useHttpPath is load-bearing — without it git omits `path=` from the credential
+# request and the helper has no owner to key a token on.
+#
+# Guarded on .agent because on a machine without the helper installed this would
+# break github.com authentication outright.
+[credential "https://github.com"]
+	helper =
+	helper = {{ .chezmoi.homeDir }}/.local/bin/git-credential-github-org
+	useHttpPath = true
+{{- end }}
 [alias]
 	fixup = "!fn() { _FIXUP_COMMIT=`git log -n 50 --pretty=format:'%h %s' --no-merges | fzf | cut -c -7` && git commit -m \"fixup! ${_FIXUP_COMMIT}\" && GIT_EDITOR=true git rebase --autosquash -i ${_FIXUP_COMMIT}^; }; fn"
 [include]
