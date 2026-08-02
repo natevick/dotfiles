@@ -28,6 +28,18 @@ Library/**
 .claude/**
 {{ end }}
 
+# Agent-only credential shims. `gh` and `git` here SHADOW the real binaries on
+# $PATH: gh injects a per-org fine-grained PAT, git refuses force-push and
+# branch-delete. On a machine with no ~/.config/github-pats that would break
+# github.com authentication outright, so they must never land on a non-agent
+# host. git-credential-github-org is inert without them but is gated the same
+# way for coherence.
+{{ if not .agent }}
+.local/bin/gh
+.local/bin/git
+.local/bin/git-credential-github-org
+{{ end }}
+
 # cmux is a macOS app; its dock.json (with ssh -t commands run FROM the Mac) only
 # applies there. Ignore on non-Mac so agent/Linux hosts don't get a useless copy.
 {{ if ne .chezmoi.os "darwin" }}

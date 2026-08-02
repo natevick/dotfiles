@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# git — thin wrapper that refuses history-destroying pushes and tells Nate.
+#
+# ⚠️ WHAT THIS IS, PRECISELY: an ACCIDENT CATCHER. It is NOT a security control
+# and must never be described as one in a doc, a PR, or a note to anyone.
+# The thing being restricted is the thing enforcing the restriction: anything
+# running as norm can call /usr/bin/git directly, use the REST API, or set
+# NORM_ALLOW_FORCE=1. It stops a mistake — a reflexive `push -f`, a stray
+# `--delete` — and it makes the attempt visible. That is the whole claim.
+#
+# It exists because the broker's hard-deny on force-push and branch-delete does
+# NOT apply to the ambient per-org PAT path (verified 2026-08-01: a brokered
+# --delete is denied, an ambient one succeeds). Branch protection covers default
+# branches; nothing covered feature branches. This covers the mistake case, and
+# the notification covers the rest by making it loud rather than silent.
+#
+# DESIGN RULE, deliberately opposite to a security gate: FAIL OPEN TO REAL GIT.
+# git is on the critical path of nearly everything here. Breaking every git
+# invocation would be far worse than missing one force-push, so anything
+# unexpected delegates to the real binary rather than erroring. No `set -e`.
+
+AUDIT_LOG="${NORM_GH_AUDIT:-$HOME/.local/state/norm-gh-audit.jsonl}"
+
+# ── Resolve the real git ────────────────────────────────────────────────────
+# Same lesson as the gh wrapper: never accept a version-manager shim, or we
+# exec each other until "Argument list too long". git is not shimmed on this
+# host today, but the predicate costs nothing and the failure mode is ugly.
+_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null)"
+_usable() {
+  local c="$1" r
+  [ -x "$c" ] && [ ! -d "$c" ] || return 1
+  r="$(readlink -f "$c" 2>/dev/null)" || return 1
+  [ "$r" = "$_self" ] && return 1
+  case "$c" in */shims/*) return 1 ;; esac
+  [ "$(basename "$r")" = "git" ] || return 1
+  return 0
+}
+# $PATH order first (so we run whatever git would have run), hardcoded paths as
+# the fallback — same shape as the gh wrapper. Resolving hardcoded-first looks
+# safer but isn't: it silently ignores $PATH, which also made this wrapper
+# untestable (a fake git on a test $PATH was never reached).
+REAL_GIT=""
+IFS=':' read -r -a _dirs <<<"$PATH"
+for d in "${_dirs[@]}"; do
+  [ -n "$d" ] && _usable "$d/git" && { REAL_GIT="$d/git"; break; }
+done
+if [ -z "$REAL_GIT" ]; then
+  for c in /usr/bin/git /usr/local/bin/git /opt/homebrew/bin/git; do
+    _usable "$c" && { REAL_GIT="$c"; break; }
+  done
+fi
+# Cannot find a real git: get out of the way rather than break the world.
+[ -z "$REAL_GIT" ] && { echo "git (norm wrapper): no real git found; refusing to interfere." >&2; exit 127; }
+
+# ── Fast path: anything that is not a push is none of our business ──────────
+# Scan only for the FIRST non-option token, so `git -C /x push` is still seen as
+# a push while `git commit -f`-style flags elsewhere are ignored entirely.
+_subcmd=""
+_i=1
+while [ $_i -le $# ]; do
+  _a="${!_i}"
+  case "$_a" in
+    -C|--git-dir|--work-tree|--namespace|-c|--exec-path) _i=$((_i+2)); continue ;;
+    -*) _i=$((_i+1)); continue ;;
+    *) _subcmd="$_a"; break ;;
+  esac
+done
+[ "$_subcmd" = "push" ] || exec "$REAL_GIT" "$@"
+
+# ── Classify the push ──────────────────────────────────────────────────────
+_reason=""
+for _a in "$@"; do
+  case "$_a" in
+    --force|--force-with-lease|--force-with-lease=*|--force-if-includes)
+      _reason="non-fast-forward push ($_a)" ; break ;;
+    --delete|--mirror|--prune)
+      _reason="remote ref deletion ($_a)" ; break ;;
+    # Short-option clusters: -f, -fu, -df ... but NOT long options.
+    -[!-]*)
+      case "$_a" in
+        *f*) _reason="non-fast-forward push ($_a contains -f)" ; break ;;
+        *d*) _reason="remote ref deletion ($_a contains -d)" ; break ;;
+      esac ;;
+    # Refspecs: leading '+' forces; a leading ':' with no source deletes.
+    +*)  _reason="non-fast-forward push (refspec $_a)" ; break ;;
+    :*)  _reason="remote ref deletion (refspec $_a)" ; break ;;
+  esac
+done
+
+# Not destructive -> straight through.
+[ -z "$_reason" ] && exec "$REAL_GIT" "$@"
+
+# ── Record + notify ────────────────────────────────────────────────────────
+_audit() { # $1 = event, $2 = detail
+  local line argv_json="[]" first=1 a
+  for a in "$@"; do :; done
+  for a in "${_ORIG_ARGV[@]}"; do
+    a="${a//\\/\\\\}"; a="${a//\"/\\\"}"
+    if [ $first -eq 1 ]; then argv_json="[\"$a\""; first=0; else argv_json="$argv_json,\"$a\""; fi
+  done
+  [ $first -eq 0 ] && argv_json="$argv_json]"
+  printf -v line '{"ts":"%s","tool":"git-guard","event":"%s","detail":"%s","argv":%s,"pid":%d,"cwd":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$argv_json" "$$" "$PWD" 2>/dev/null || return 0
+  { mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null \
+    && { [ -e "$AUDIT_LOG" ] || { : >"$AUDIT_LOG" && chmod 0600 "$AUDIT_LOG"; } ; } 2>/dev/null \
+    && printf '%s' "$line" >>"$AUDIT_LOG" 2>/dev/null; } \
+    || printf 'git (norm wrapper): WARNING audit write failed\n' >&2
+}
+_ORIG_ARGV=("$@")
+
+_notify() { # $1 = html message. Never allowed to block or fail the caller.
+  command -v broker-run >/dev/null 2>&1 || return 0
+  printf '%s' "$1" | timeout 20 broker-run --notify >/dev/null 2>&1 || \
+    printf 'git (norm wrapper): notification failed (message still in the audit log)\n' >&2
+}
+
+_where="$(${REAL_GIT} rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")"
+_remote="$(${REAL_GIT} remote get-url origin 2>/dev/null | sed -E 's#.*github.com[:/]##; s#\.git$##')"
+
+if [ -n "${NORM_ALLOW_FORCE:-}" ]; then
+  _audit override_used "$_reason"
+  _notify "⚠️ **norm used NORM_ALLOW_FORCE**
+${_reason}
+repo: ${_remote:-$_where}
+cmd: \`git $*\`
+This was a deliberate override of the force-push guard and it went through."
+  exec "$REAL_GIT" "$@"
+fi
+
+_audit blocked "$_reason"
+_notify "🛑 **norm blocked a destructive git push**
+${_reason}
+repo: ${_remote:-$_where}
+cmd: \`git $*\`
+Refused by the client-side guard. Re-run with NORM_ALLOW_FORCE=1 if it was intended."
+
+cat >&2 <<EOF
+git (norm wrapper): REFUSED — ${_reason}
+
+  repo: ${_remote:-$_where}
+  cmd:  git $*
+
+This guard exists because the broker's deny on force-push/branch-delete does not
+cover the ambient per-org PAT path. Nate has been notified.
+
+If this was intended and you are sure:  NORM_ALLOW_FORCE=1 git $*
+(that path is also audited and notified — deliberately)
+EOF
+exit 1
