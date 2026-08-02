@@ -1,43 +1,87 @@
 #!/bin/sh
 # Mirrors ~/.claude/projects/*/memory into the private dotfiles-work repo and
 # pushes. Runs from launchd daily (com.natevick.claude-memory-backup); safe to
-# run by hand. No-ops quietly if the private repo isn't cloned on this machine.
+# run by hand. No-ops on machines without the private repo — but says so.
+#
+# WHY THE NOISE (2026-08-02): this was installed on norm's box on 2026-07-03 and did nothing
+# for a month. `~/.dotfiles-work` was never cloned there, so the repo check hit `|| exit 0` and
+# returned success, every day, silently. 86 memory files sat unbacked-up behind a backup job
+# that reported nothing wrong — because "no repo on this machine" and "backed up fine" produced
+# byte-identical output: none.
+#
+# No-opping without the repo is CORRECT. Being undetectable about it is not. Every exit path
+# now records an outcome, and the three that mean "you have no backup" also write stderr so
+# launchd captures them.
+#
+#   check it:  cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-memory-backup.status"
 set -eu
 
 WORK="$HOME/.dotfiles-work"
 SRC="$HOME/.claude/projects"
 DEST="$WORK/claude-memory"
-[ -d "$WORK/.git" ] || exit 0
-[ -d "$SRC" ] || exit 0
+STATUS="${XDG_STATE_HOME:-$HOME/.local/state}/claude-memory-backup.status"
+
+# Always leave a record of the last outcome. Never let a failure to record cause a failure to
+# back up — hence the `|| true`.
+note() {
+  mkdir -p "$(dirname "$STATUS")" 2>/dev/null || true
+  printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "${2-}" >"$STATUS" 2>/dev/null || true
+}
+warn() { printf 'claude-memory-backup: %s\n' "$1" >&2; }
+
+if [ ! -d "$WORK/.git" ]; then
+  note SKIPPED "no-clone:$WORK - NOTHING WAS BACKED UP"
+  warn "SKIPPED - $WORK is not a clone. Nothing was backed up. Clone the private repo there, or remove this job."
+  exit 0
+fi
+if [ ! -d "$SRC" ]; then
+  note SKIPPED "no-source:$SRC - NOTHING WAS BACKED UP"
+  warn "SKIPPED - $SRC does not exist. Nothing was backed up."
+  exit 0
+fi
 
 # launchd has a bare PATH — hooks (pre-commit/gitleaks via mise) and gh need these
 PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 
 # multiple machines push to this repo — sync before mirroring.
-# Split rather than `cd && pull || true`: that form let `|| true` swallow a
-# failed cd too, and everything below (including the cd on line 30) assumes we
-# are in $WORK. cd failure should be fatal under `set -e`; only the pull is
-# best-effort. (Also what SC2015 was pointing at.)
+#
+# Was `cd "$WORK" && git pull … || true`, which shellcheck SC2015'd and was right to: in
+# `A && B || C` the `|| true` swallows a FAILED cd as well as a failed pull. With `set -eu` a
+# bare `cd` aborts on failure, which is what we want — a mirror written to the wrong directory
+# is worse than no mirror. Only the pull is allowed to fail (another machine may have pushed,
+# or we may be offline).
 cd "$WORK"
 git pull --rebase -q origin main 2>/dev/null || true
 
 found=0
+files=0
 for d in "$SRC"/*/memory; do
   [ -d "$d" ] || continue
   found=1
   proj=$(basename "$(dirname "$d")")
   mkdir -p "$DEST/$proj"
   rsync -a --delete "$d/" "$DEST/$proj/"
+  files=$((files + $(find "$d" -type f | wc -l | tr -d ' ')))
 done
-[ "$found" -eq 1 ] || exit 0
+if [ "$found" -eq 0 ]; then
+  note SKIPPED "no-memory-dirs-under:$SRC - NOTHING WAS BACKED UP"
+  warn "SKIPPED - no */memory directories under $SRC. Nothing was backed up."
+  exit 0
+fi
 
 cd "$WORK"
 git add claude-memory
-git diff --cached --quiet && exit 0
+if git diff --cached --quiet; then
+  # The one legitimately quiet path: mirrored, genuinely unchanged. Still recorded, so the
+  # status file always answers "when did this last actually run" rather than going stale.
+  note UNCHANGED "$files files mirrored, no diff"
+  exit 0
+fi
 msg="chore: claude memory backup $(date +%Y-%m-%d)"
 # hygiene hooks may auto-fix files on the first try; re-add and retry once
 git commit -qm "$msg" || { git add claude-memory; git commit -qm "$msg"; }
 # lost a push race with another machine? rebase and retry once
 git push -q origin main || { git pull --rebase -q origin main && git push -q origin main; }
-echo "claude-memory: backed up $(git rev-parse --short HEAD)"
+note OK "$files files at $(git rev-parse --short HEAD)"
+echo "claude-memory: backed up $files files at $(git rev-parse --short HEAD)"
