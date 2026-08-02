@@ -14,7 +14,11 @@ DEST="$WORK/claude-memory"
 PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 
-# multiple machines push to this repo — sync before mirroring
+# multiple machines push to this repo — sync before mirroring.
+# Split rather than `cd && pull || true`: that form let `|| true` swallow a
+# failed cd too, and everything below (including the cd on line 30) assumes we
+# are in $WORK. cd failure should be fatal under `set -e`; only the pull is
+# best-effort. (Also what SC2015 was pointing at.)
 cd "$WORK"
 git pull --rebase -q origin main 2>/dev/null || true
 
