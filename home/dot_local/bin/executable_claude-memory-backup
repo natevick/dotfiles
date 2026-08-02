@@ -44,8 +44,15 @@ fi
 PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 
-# multiple machines push to this repo — sync before mirroring
-cd "$WORK" && git pull --rebase -q origin main 2>/dev/null || true
+# multiple machines push to this repo — sync before mirroring.
+#
+# Was `cd "$WORK" && git pull … || true`, which shellcheck SC2015'd and was right to: in
+# `A && B || C` the `|| true` swallows a FAILED cd as well as a failed pull. With `set -eu` a
+# bare `cd` aborts on failure, which is what we want — a mirror written to the wrong directory
+# is worse than no mirror. Only the pull is allowed to fail (another machine may have pushed,
+# or we may be offline).
+cd "$WORK"
+git pull --rebase -q origin main 2>/dev/null || true
 
 found=0
 files=0
