@@ -22,6 +22,11 @@ the only true prerequisites are `zsh`, `git`, and `curl`. All shell wiring lives
 `home/dot_config/zsh/aliases.zsh` and is `command -v`-guarded, so anything missing degrades to the
 native command.
 
+On macOS (non-headless), the bootstrap also installs [AeroSpace](https://nikitabobko.github.io/AeroSpace),
+an i3-like tiling WM, and manages `~/.aerospace.toml`. It is the repo's only Homebrew **cask** and its
+only **tap** (`nikitabobko/tap`, the upstream author's own) — everything else brew installs is
+homebrew-core.
+
 ### Aliases
 
 | Alias | Expands to | Notes |
