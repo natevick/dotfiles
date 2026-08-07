@@ -46,3 +46,9 @@ Library/**
 .config/cmux
 .config/cmux/**
 {{ end }}
+
+# AeroSpace is a macOS tiling WM — useless without a GUI, so gate it the same way
+# as use-spark. install-aerospace.sh carries the matching guard.
+{{ if or (ne .chezmoi.os "darwin") .headless }}
+.aerospace.toml
+{{ end }}

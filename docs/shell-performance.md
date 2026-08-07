@@ -17,6 +17,7 @@ zsh -c 'zmodload zsh/zprof; source ~/.zshrc >/dev/null 2>&1; zprof | head -15'  
    - Don't add `emulate -L zsh` inside `_eval_cached` — `LOCAL_OPTIONS` would revert `setopt`s made by the sourced init (this broke starship once).
 3. **compinit is deferred.** `compdef` doesn't exist at rc-load time; the stub in `dot_zshrc.tmpl` queues calls and the zinit turbo block flushes them after `zicompinit` (`-C` flag: trusts the cached dump). Anything that emits `compdef` at rc time (like `op completion`) just works via the queue.
 4. New plugins go in `plugins.zsh` under the existing `zinit wait lucid for` blocks, never eager-loaded in `.zshrc`.
+5. **Tool inits that aren't mise or starship go in `_deferred_tool_inits`** (defined in `dot_zshrc.tmpl`, invoked from the `atload` of `zsh-autosuggestions` in `plugins.zsh`). fzf, zoxide and op used to run sync and cost ~8ms before the prompt for keybindings and completions nothing can reach until a prompt exists. Piggybacking on an existing turbo plugin's `atload` avoids cloning a `null` carrier just to schedule code. Note that `zsh -i -c exit` never fires turbo, so this work is invisible to the budget check — that's the point, but it also means functional changes here need verifying in a real interactive shell (`zsh/zpty`), not with `-c`.
 
 ## Enforcement
 

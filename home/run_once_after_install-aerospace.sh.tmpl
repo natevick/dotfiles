@@ -1,0 +1,30 @@
+{{ if and (eq .chezmoi.os "darwin") (not .headless) (not .container) -}}
+#!/bin/sh
+# AeroSpace — i3-like tiling WM for macOS. GUI-only, so this is gated to
+# non-headless Macs; ~/.aerospace.toml is gated the same way in .chezmoiignore.
+#
+# TRUST NOTE: this is the repo's only tap and only cask — everything else brew
+# installs (tmux, vim, mise) is homebrew-core. AeroSpace is not in homebrew-cask,
+# so it comes from nikitabobko/tap, which is the upstream author's own tap for
+# github.com/nikitabobko/AeroSpace — same trust boundary as the app itself, not a
+# third party repackaging it. Installed fully qualified rather than via a bare
+# `brew tap` so the provenance is explicit at the call site and no extra tap is
+# left configured for unrelated formulae to resolve against.
+#
+# Never fails the apply: same policy as install-system-packages.sh.
+set -eu
+
+command -v brew >/dev/null 2>&1 || {
+  echo "==> no brew; skipping AeroSpace (install manually: https://nikitabobko.github.io/AeroSpace)" >&2
+  exit 0
+}
+
+if brew list --cask aerospace >/dev/null 2>&1 || [ -d /Applications/AeroSpace.app ]; then
+  exit 0
+fi
+
+echo "==> Installing AeroSpace (cask: nikitabobko/tap)"
+brew install --cask nikitabobko/tap/aerospace ||
+  echo "==> AeroSpace install failed; install manually: brew install --cask nikitabobko/tap/aerospace" >&2
+exit 0
+{{ end -}}

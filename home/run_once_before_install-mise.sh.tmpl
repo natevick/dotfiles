@@ -1,6 +1,48 @@
 #!/bin/sh
+# Installs mise, and — just as important — makes sure an *existing* mise is new
+# enough. cli-tools.toml uses `[settings.ruby] compile` and
+# `idiomatic_version_file_enable_tools`; mise from 2024 rejects the former with a
+# hard TOML parse error, which fails install-tools.sh and aborts the whole apply.
+# A presence-only check let that through: a Mac carrying a stale `brew install
+# mise` never reached mise.run and then died at `mise install`.
+#
+# MISE_MIN is the oldest release verified to parse this repo's config, not a
+# researched lower bound — the true minimum is somewhere below it. Erring high
+# only costs an occasional no-op upgrade.
 set -eu
-if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
+
+MISE_MIN="2026.8.2"
+
+MISE=""
+if command -v mise >/dev/null 2>&1; then
+  MISE="$(command -v mise)"
+elif [ -x "$HOME/.local/bin/mise" ]; then
+  MISE="$HOME/.local/bin/mise"
+fi
+
+if [ -z "$MISE" ]; then
   echo "==> Installing mise"
   curl -fsSL https://mise.run | sh
+  exit 0
+fi
+
+# Field-wise numeric compare. Not `sort -V`: busybox sort (Alpine) is spotty on
+# it. Not string compare: that ranks 2026.8.10 below 2026.8.2.
+older_than() {
+  [ "$1" != "$2" ] &&
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -t. -k1,1n -k2,2n -k3,3n | head -1)" = "$1" ]
+}
+
+# "2026.8.2 macos-arm64 (2026-08-04)" -> "2026.8.2"
+CURRENT="$("$MISE" --version 2>/dev/null | awk '{print $1}')"
+
+if [ -n "$CURRENT" ] && older_than "$CURRENT" "$MISE_MIN"; then
+  echo "==> mise $CURRENT is older than $MISE_MIN; upgrading"
+  if brew list --versions mise >/dev/null 2>&1; then
+    # self-update refuses to touch a brew-managed install, and dropping a second
+    # mise in ~/.local/bin would only shadow it inside scripts that reorder PATH.
+    brew upgrade mise
+  elif ! "$MISE" self-update -y; then
+    curl -fsSL https://mise.run | sh
+  fi
 fi
