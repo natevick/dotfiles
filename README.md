@@ -5,8 +5,15 @@ Managed with [chezmoi](https://chezmoi.io). Source lives under `home/`.
 ## New machine
 
 ```sh
-sh -c "$(curl -fsSL https://get.chezmoi.io)" -- init --apply natevick
+sh -c "$(curl -fsSL https://get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply natevick
 ```
+
+`-b` is not optional. The installer defaults to `BINDIR=bin`, which is *relative* — without
+it chezmoi lands in `$PWD/bin/chezmoi`, wherever you happened to run the command. The apply
+still succeeds (the installer `exec`s the binary it just placed), so the breakage only shows
+up afterwards as `chezmoi: command not found`. `~/.local/bin` is what `dot_zshenv` puts on
+PATH. Don't substitute `get.chezmoi.io/lb` either — it hardcodes a relative `.local/bin` and
+so only lands correctly when run from `$HOME`.
 
 ## Devcontainer / Codespaces
 
