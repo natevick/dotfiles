@@ -4,7 +4,7 @@
 zinit wait lucid for \
   atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay; _flush_deferred_compdefs" \
     zdharma-continuum/fast-syntax-highlighting \
-  atload"_zsh_autosuggest_start" \
+  atload"_zsh_autosuggest_start; _deferred_tool_inits" \
     zsh-users/zsh-autosuggestions \
   blockf \
     zsh-users/zsh-completions

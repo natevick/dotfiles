@@ -69,13 +69,24 @@ _flush_deferred_compdefs() {
 # ---- starship (sync: prompt paints immediately) ----
 _eval_cached starship starship init zsh
 
+# ---- deferred tool inits (invoked from the turbo block in plugins.zsh) ----
+# Rule 1 in docs/shell-performance.md: only mise (tools on PATH) and starship
+# (prompt must paint) earn a sync slot. fzf's keybindings, zoxide's `z`, and op's
+# completion are all unreachable until there is a prompt to type at, so they load
+# ~1ms after it appears rather than ~8ms before it.
+_deferred_tool_inits() {
+  _eval_cached fzf fzf --zsh
+  _eval_cached zoxide zoxide init zsh
+  # `op completion zsh` emits `compdef _op op`. Running here rather than at rc
+  # time means compinit has already restored the real compdef, so it lands
+  # directly instead of going through the _DEFERRED_COMPDEFS queue.
+  _eval_cached op op completion zsh
+  [[ -f "$HOME/.config/op/plugins.sh" ]] && source "$HOME/.config/op/plugins.sh"
+}
+
 # ---- turbo plugins + aliases ----
 [[ -f "$HOME/.config/zsh/plugins.zsh" ]] && source "$HOME/.config/zsh/plugins.zsh"
 [[ -f "$HOME/.config/zsh/aliases.zsh" ]] && source "$HOME/.config/zsh/aliases.zsh"
-
-# ---- fzf + zoxide ----
-_eval_cached fzf fzf --zsh
-_eval_cached zoxide zoxide init zsh
 
 # ---- history prefix-search on Up/Down (OMZ-style) ----
 # Type a prefix, then Up/Down cycles only through history entries starting with it.
@@ -88,11 +99,9 @@ bindkey '^[[B' down-line-or-beginning-search; bindkey '^[OB' down-line-or-beginn
 [[ -n "${terminfo[kcud1]}" ]] && bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
 
 # ---- vendor integrations (guarded; no-op when tool absent) ----
-# `op completion zsh` already emits its own `compdef _op op` (queued by the stub above).
-_eval_cached op op completion zsh
-[[ -f "$HOME/.config/op/plugins.sh" ]] && source "$HOME/.config/op/plugins.sh"
+# op's completion + shell plugins load from _deferred_tool_inits above; these are
+# plain PATH/fpath edits with no subprocess, so they stay sync.
 [[ -d "$HOME/.grok/bin" ]] && { export PATH="$HOME/.grok/bin:$PATH"; fpath=("$HOME/.grok/completions/zsh" $fpath); }
-[[ -f "$HOME/.openclaw/completions/openclaw.zsh" ]] && source "$HOME/.openclaw/completions/openclaw.zsh"
 [[ -d "$HOME/.composio" ]] && export PATH="$HOME/.composio:$PATH"
 
 # ---- chezmoi drift nudge ----
