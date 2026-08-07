@@ -73,8 +73,16 @@ On macOS, `Alt-C` needs the terminal set to treat Option as Meta (Esc+); `Ctrl-T
 
 - `chezmoi edit ~/.zshrc` — edit a managed file
 - `chezmoi diff` — preview what apply would change (always run first)
-- `chezmoi apply` — apply changes
+- `chezmoi apply` — apply changes **from the local source only; this never pulls**
+- `chezmoi update` — `git pull` the source, then apply. Use this on a second machine
 - `chezmoi cd` — drop into the source repo
+
+If a machine is missing something you know you merged, check the source is current before
+suspecting the templates — a stale clone looks exactly like a gating bug:
+
+```sh
+git -C "$(chezmoi execute-template '{{ .chezmoi.workingTree }}')" log --oneline -1
+```
 
 Per-machine/secret junk goes in `~/.config/zsh/local.zsh` (git-ignored, sourced last).
 Work machines additionally clone the private `dotfiles-work` overlay and run its `install.sh`.
