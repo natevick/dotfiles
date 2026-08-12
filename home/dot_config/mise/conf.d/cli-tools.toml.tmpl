@@ -6,6 +6,9 @@ idiomatic_version_file_enable_tools = ["ruby", "node", "yarn", "bun"]
 [settings.ruby]
 compile = false
 
+[settings.npm]
+shell_out = true
+
 [tools]
 fzf = "latest"
 zoxide = "latest"
@@ -21,7 +24,7 @@ helix = "latest"
 bottom = "latest"    # `btm` — lighter, narrow-friendly; used by the cmux dock Host panel
 zig = "0.15.2"       # cmux builds GhosttyKit.xcframework; ghostty pins minimum_zig_version
 {{- if eq .chezmoi.os "linux" }}
-"npm:@endevco/aube" = "latest"   # aube — our Node package manager (jdx, same author as mise); verified v1.33.1
+"npm:@endevco/aube" = { version = "latest", npm_args = "--ignore-scripts=false" }   # aube — our Node package manager (jdx, same author as mise); its preinstall fetches the arch-specific binary
 "github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
 {{- end }}
 {{- end }}
