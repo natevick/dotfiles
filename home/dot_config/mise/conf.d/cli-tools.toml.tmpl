@@ -21,7 +21,10 @@ helix = "latest"
 bottom = "latest"    # `btm` — lighter, narrow-friendly; used by the cmux dock Host panel
 zig = "0.15.2"       # cmux builds GhosttyKit.xcframework; ghostty pins minimum_zig_version
 {{- if eq .chezmoi.os "linux" }}
-"npm:@endevco/aube" = "latest"   # aube — our Node package manager (jdx, same author as mise); verified v1.33.1
+# PINNED, do not restore "latest": resolving it runs `npm view`, and in that
+# child `npm` hits the mise shim and re-enters resolution — 2,829-deep recursion
+# OOM'd the box twice on 2026-08-12. An exact version needs no registry call.
+"npm:@endevco/aube" = "1.33.1"   # aube — our Node package manager (jdx, same author as mise)
 "github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
 {{- end }}
 {{- end }}
