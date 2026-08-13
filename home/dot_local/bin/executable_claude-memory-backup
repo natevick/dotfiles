@@ -71,6 +71,17 @@ if [ "$found" -eq 0 ]; then
 fi
 
 cd "$WORK"
+
+# Commit lands on the CHECKED-OUT branch, but the push below names main. On any other branch
+# that pair silently strands the backup: commit goes to the feature branch, `push origin main`
+# ships an unchanged main, exit 0. Found on 2026-08-13 with the repo on feat/selective-prod-tooling.
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$branch" != "main" ]; then
+  note SKIPPED "on-branch:$branch - NOTHING WAS BACKED UP"
+  warn "SKIPPED - $WORK is on '$branch', not main. Nothing was backed up. Check out main there."
+  exit 0
+fi
+
 git add claude-memory
 if git diff --cached --quiet; then
   # The one legitimately quiet path: mirrored, genuinely unchanged. Still recorded, so the
