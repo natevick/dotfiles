@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# github-pat-install — install a per-org GitHub PAT for git-credential-github-org.
+#
+#   github-pat-install <owner>          # prompts, input hidden
+#   pbpaste | github-pat-install <owner> # or pipe it in
+#
+# Writes $GITHUB_PAT_DIR/<owner> (default ~/.config/github-pats/<owner>) at mode
+# 0600 with no trailing newline, then verifies two things:
+#   1. the credential helper actually resolves a token for that owner, and
+#   2. GitHub accepts it, reporting which account it authenticates as.
+#
+# The token is never echoed, never passed as an argument (argv is visible to
+# every user via ps), and never written anywhere but its destination.
+
+set -euo pipefail
+
+TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+note() { printf '  %s\n' "$*" >&2; }
+
+owner="${1:-}"
+[ -n "$owner" ] || die "usage: github-pat-install <owner>    e.g. github-pat-install offerlab"
+
+# The helper lowercases the owner taken from the remote URL, so the filename
+# must be lowercase to match.
+owner="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
+[[ "$owner" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || die "invalid owner name: $owner"
+
+dest="$TOKEN_DIR/$owner"
+
+if [ -e "$dest" ]; then
+  printf 'A token for %s already exists (%s bytes). Replace it? [y/N] ' \
+    "$owner" "$(stat -c%s "$dest")" >&2
+  read -r ans
+  case "$ans" in [yY]|[yY][eE][sS]) ;; *) die "aborted; nothing changed" ;; esac
+fi
+
+# Hidden prompt on a terminal; plain read when piped, so this works over the
+# `!` escape and in scripts.
+if [ -t 0 ]; then
+  printf 'Paste the PAT for %s (input hidden), then Enter: ' "$owner" >&2
+  IFS= read -rs token
+  printf '\n' >&2
+else
+  IFS= read -r token
+fi
+
+[ -n "${token:-}" ] || die "no token entered; nothing changed"
+
+case "$token" in
+  github_pat_*|ghp_*) ;;
+  *) die "that does not look like a GitHub PAT (expected github_pat_... or ghp_...); nothing changed" ;;
+esac
+case "$token" in
+  *[[:space:]]*) die "token contains whitespace -- a stray character was probably pasted; nothing changed" ;;
+esac
+
+mkdir -p "$TOKEN_DIR"
+chmod 700 "$TOKEN_DIR"
+
+old_umask="$(umask)"
+umask 077
+printf '%s' "$token" > "$dest"
+umask "$old_umask"
+chmod 600 "$dest"
+
+note "wrote $dest ($(stat -c%s "$dest") bytes, mode $(stat -c%a "$dest"))"
+
+# --- verify 1: does the credential helper chain actually resolve it? ---------
+# Exercises gitconfig (credential.useHttpPath) -> helper -> token file. grep -q
+# keeps the credential off the terminal.
+if printf 'protocol=https\nhost=github.com\npath=%s/probe.git\n\n' "$owner" \
+   | git credential fill 2>/dev/null | grep -q '^password=.'; then
+  note "credential helper resolves a token for $owner"
+else
+  die "helper did NOT resolve a token for $owner -- check credential.useHttpPath in gitconfig"
+fi
+
+# --- verify 2: does GitHub accept it, and as whom? --------------------------
+if command -v curl >/dev/null 2>&1; then
+  PAT_CHECK="$token"; export PAT_CHECK
+  login="$(curl -sS --max-time 20 \
+      --variable %PAT_CHECK \
+      --expand-header "Authorization: Bearer {{PAT_CHECK}}" \
+      -H "Accept: application/vnd.github+json" \
+      https://api.github.com/user 2>/dev/null \
+    | sed -n 's/.*"login"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+  unset PAT_CHECK
+  if [ -n "$login" ]; then
+    note "GitHub accepts it; authenticates as '$login'"
+  else
+    printf 'WARNING: GitHub did not return an account for this token. It may be expired or lack scope.\n' >&2
+    printf '         The file was still written to %s.\n' "$dest" >&2
+  fi
+fi
+
+unset token
+printf 'done. git and gh now work directly for %s -- no broker, no approval.\n' "$owner" >&2
