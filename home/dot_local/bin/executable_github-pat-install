@@ -19,6 +19,16 @@ TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 note() { printf '  %s\n' "$*" >&2; }
 
+# GNU and BSD stat take different flags and this repo is applied on both a Mac
+# and Linux agent boxes. Probe with the GNU form: BSD stat rejects -c outright.
+if stat -c%s /dev/null >/dev/null 2>&1; then
+  file_size() { stat -c%s "$1"; }
+  file_mode() { stat -c%a "$1"; }
+else
+  file_size() { stat -f%z "$1"; }
+  file_mode() { stat -f%OLp "$1"; }
+fi
+
 owner="${1:-}"
 [ -n "$owner" ] || die "usage: github-pat-install <owner>    e.g. github-pat-install offerlab"
 
@@ -31,7 +41,7 @@ dest="$TOKEN_DIR/$owner"
 
 if [ -e "$dest" ]; then
   printf 'A token for %s already exists (%s bytes). Replace it? [y/N] ' \
-    "$owner" "$(stat -c%s "$dest")" >&2
+    "$owner" "$(file_size "$dest")" >&2
   read -r ans
   case "$ans" in [yY]|[yY][eE][sS]) ;; *) die "aborted; nothing changed" ;; esac
 fi
@@ -43,7 +53,9 @@ if [ -t 0 ]; then
   IFS= read -rs token
   printf '\n' >&2
 else
-  IFS= read -r token
+  # `read` fails at EOF with no trailing newline -- what `pbpaste |` produces --
+  # having already set $token. set -e would kill us silently; the guard below catches empty.
+  IFS= read -r token || true
 fi
 
 [ -n "${token:-}" ] || die "no token entered; nothing changed"
@@ -65,7 +77,7 @@ printf '%s' "$token" > "$dest"
 umask "$old_umask"
 chmod 600 "$dest"
 
-note "wrote $dest ($(stat -c%s "$dest") bytes, mode $(stat -c%a "$dest"))"
+note "wrote $dest ($(file_size "$dest") bytes, mode $(file_mode "$dest"))"
 
 # --- verify 1: does the credential helper chain actually resolve it? ---------
 # Exercises gitconfig (credential.useHttpPath) -> helper -> token file. grep -q
