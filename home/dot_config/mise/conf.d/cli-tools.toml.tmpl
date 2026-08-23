@@ -23,6 +23,7 @@ node = "22"
 helix = "latest"
 bottom = "latest"    # `btm` — lighter, narrow-friendly; used by the cmux dock Host panel
 zig = "0.15.2"       # cmux builds GhosttyKit.xcframework; ghostty pins minimum_zig_version
+herdr = "0.8.2"      # agent multiplexer; pinned because it is pre-1.0 and ships weekly
 {{- if eq .chezmoi.os "linux" }}
 "npm:@endevco/aube" = { version = "latest", npm_args = "--ignore-scripts=false" }   # aube — our Node package manager (jdx, same author as mise); its preinstall fetches the arch-specific binary
 "github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
