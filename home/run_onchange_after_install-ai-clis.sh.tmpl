@@ -12,18 +12,37 @@ set -eu
 {{- if not .container }}
 export PATH="$HOME/.local/bin:$PATH"
 
+# These downloads go through GitHub's release API, which rate-limits shared IPs — CI runners
+# get a 403. A missing optional CLI should not abort the whole apply, so warn and carry on.
+#
+# Fetched to a file first ON PURPOSE. `curl … | sh || warn` cannot work: $? is the
+# interpreter's, and sh reading an empty body exits 0, so the guard never fires and a failed
+# download reads as a successful install. Verified 2026-08-28: a 403 through that pipe gives 0.
+try_install() { # try_install <name> <url> <interpreter> [args...]
+  _name=$1 _url=$2
+  shift 2
+  _tmp=$(mktemp) || { echo "!!! $_name: mktemp failed — skipping" >&2; return 0; }
+  if curl -fsSL "$_url" -o "$_tmp"; then
+    "$@" "$_tmp" || echo "!!! $_name install script failed — skipping" >&2
+  else
+    echo "!!! $_name download failed (network or rate limit) — skipping" >&2
+  fi
+  rm -f "$_tmp"
+}
+
 if [ ! -x "$HOME/.local/bin/claude" ]; then
   echo "==> Installing Claude Code"
-  curl -fsSL https://claude.ai/install.sh | bash
+  try_install "Claude Code" https://claude.ai/install.sh bash
 fi
 
 if [ ! -x "$HOME/.local/bin/codex" ]; then
   echo "==> Installing Codex CLI"
-  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 SHELL=/bin/sh sh
+  try_install "Codex CLI" https://chatgpt.com/codex/install.sh \
+    env CODEX_NON_INTERACTIVE=1 SHELL=/bin/sh sh
 fi
 
 if [ ! -x "$HOME/.grok/bin/grok" ]; then
   echo "==> Installing Grok CLI"
-  curl -fsSL https://x.ai/cli/install.sh | SHELL=/bin/sh bash
+  try_install "Grok CLI" https://x.ai/cli/install.sh env SHELL=/bin/sh bash
 fi
 {{- end }}
