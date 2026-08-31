@@ -2,5 +2,17 @@
 set -eu
 # cli-tools hash: {{ include "dot_config/mise/conf.d/cli-tools.toml.tmpl" | sha256sum }}
 export PATH="$HOME/.local/bin:$PATH"
+{{ if and (eq .chezmoi.os "darwin") (not .container) -}}
+# Homebrew is the only source of eza on macOS (see cli-tools.toml.tmpl).
+# Never fails the apply: same policy as install-system-packages.sh.
+if ! command -v eza >/dev/null 2>&1; then
+  if command -v brew >/dev/null 2>&1; then
+    echo "==> Installing eza via brew"
+    brew install eza || echo "==> eza install failed; install manually: brew install eza" >&2
+  else
+    echo "==> no brew; skipping eza (install manually: brew install eza)" >&2
+  fi
+fi
+{{ end -}}
 echo "==> Installing CLI tools via mise"
 mise install -y
