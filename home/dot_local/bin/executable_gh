@@ -19,31 +19,23 @@
 set -euo pipefail
 
 TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
-AUDIT_LOG="${NORM_GH_AUDIT:-$HOME/.local/state/norm-gh-audit.jsonl}"
 
 # ── Audit ───────────────────────────────────────────────────────────────────
 # Fail-OPEN but LOUD, same reasoning as the credential helper: a record is not a
 # gate, but a silent gap is indistinguishable from "nothing happened".
+NORM_AUDIT_LIB="${NORM_AUDIT_LIB:-$HOME/.local/lib/norm-audit.sh}"
+# shellcheck source=/dev/null
+[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB"
+
 _audit() {
   local event="$1" owner="${2:-}" token_file="${3:-}"
   shift 3 2>/dev/null || true
-  local argv_json="[]" first=1 a
-  for a in "$@"; do
-    a="${a//\\/\\\\}"; a="${a//\"/\\\"}"
-    if [ $first -eq 1 ]; then argv_json="[\"$a\""; first=0; else argv_json="$argv_json,\"$a\""; fi
-  done
-  [ $first -eq 0 ] && argv_json="$argv_json]"
-  local line
-  printf -v line '{"ts":"%s","tool":"gh","event":"%s","owner":"%s","token_file":"%s","argv":%s,"pid":%d,"cwd":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$event" "$owner" "$token_file" "$argv_json" "$$" "$PWD" 2>/dev/null || return 0
-  # Create with 0600 BEFORE the first append. Relying on the ambient umask gave
-  # a world-readable 0644 log — the same defect I flagged in someone else's
-  # vault writer, so it gets fixed here rather than excused.
-  if ! { mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null \
-         && { [ -e "$AUDIT_LOG" ] || { : >"$AUDIT_LOG" && chmod 0600 "$AUDIT_LOG"; } ; } 2>/dev/null \
-         && printf '%s' "$line" >>"$AUDIT_LOG" 2>/dev/null; }; then
-    printf 'gh (wrapper): WARNING audit write failed (%s) — continuing\n' "$AUDIT_LOG" >&2
+  if ! declare -F norm_audit_emit >/dev/null 2>&1; then
+    printf 'gh (wrapper): WARNING audit library missing (%s) — running unaudited\n' \
+      "$NORM_AUDIT_LIB" >&2
+    return 0
   fi
+  norm_audit_emit gh event "$event" owner "$owner" token_file "$token_file" -- "$@"
 }
 
 # ── Locate the real gh ──────────────────────────────────────────────────────
