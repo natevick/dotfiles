@@ -8,6 +8,14 @@ set -eu
 PKGS=""
 command -v tmux >/dev/null 2>&1 || PKGS="tmux"
 command -v vim >/dev/null 2>&1 || PKGS="$PKGS vim"
+
+# eza on macOS only. Upstream ships no darwin release asset, and mise has no brew backend
+# to fall back on, so homebrew-core is the only practical source. Linux gets eza from mise
+# (cli-tools.toml), which is why this is gated rather than added to PKGS unconditionally.
+if [ "$(uname -s)" = "Darwin" ] && ! command -v eza >/dev/null 2>&1; then
+  PKGS="$PKGS eza"
+fi
+
 [ -z "$PKGS" ] && exit 0
 
 SUDO=""

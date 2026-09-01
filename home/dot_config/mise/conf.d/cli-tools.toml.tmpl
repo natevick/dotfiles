@@ -15,13 +15,13 @@ zoxide = "latest"
 starship = "latest"
 jq = "latest"      # required by the Claude Code statusline script
 {{- if not .container }}
-{{- if eq .chezmoi.os "darwin" }}
-# Homebrew is the ONLY source of eza on macOS — upstream ships no darwin release asset at
-# all (16 assets in v0.23.5, zero apple), so aqua has nothing to match and mise falls
-# through to cargo-quickinstall, which 404s.
-"brew:eza" = "latest"
-{{- else }}
+{{- if ne .chezmoi.os "darwin" }}
 eza = "latest"
+{{- else }}
+# eza is deliberately absent on macOS. Upstream ships no darwin release asset (v0.23.5 has
+# 16, zero apple), and mise has NO brew backend — `brew:eza` is not valid in any mise
+# version, so it fails `mise install` outright and aborts the entire apply. macOS installs
+# eza from homebrew-core in run_once_after_install-system-packages.sh, next to tmux/vim.
 {{- end }}
 bat = "latest"
 fd = "latest"
