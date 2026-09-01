@@ -18,10 +18,7 @@ jq = "latest"      # required by the Claude Code statusline script
 {{- if ne .chezmoi.os "darwin" }}
 eza = "latest"
 {{- else }}
-# eza is deliberately absent on macOS. Upstream ships no darwin release asset (v0.23.5 has
-# 16, zero apple), and mise has NO brew backend — `brew:eza` is not valid in any mise
-# version, so it fails `mise install` outright and aborts the entire apply. macOS installs
-# eza from homebrew-core in run_once_after_install-system-packages.sh, next to tmux/vim.
+# eza on macOS lives in [bootstrap.packages] at the bottom of this file, not here.
 {{- end }}
 bat = "latest"
 fd = "latest"
@@ -35,4 +32,19 @@ herdr = "0.8.2"      # agent multiplexer; pinned because it is pre-1.0 and ships
 "npm:@endevco/aube" = { version = "latest", npm_args = "--ignore-scripts=false" }   # aube — our Node package manager (jdx, same author as mise); its preinstall fetches the arch-specific binary
 "github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
 {{- end }}
+{{- end }}
+
+{{- if and (eq .chezmoi.os "darwin") (not .container) }}
+
+# Homebrew bottles that mise installs itself via `mise bootstrap packages apply`
+# (run_onchange_after_install-tools.sh). They land in the real /opt/homebrew prefix with a
+# brew-compatible receipt, so `brew list/upgrade/uninstall` all see them — and Homebrew
+# itself need not be present. Third-party taps and casks are supported here too.
+#
+# eza: upstream ships no darwin release asset (v0.23.5 has 16, zero apple), so under
+# [tools] the registry falls through vfox-eza -> cargo-quickinstall, which 404s on a fresh
+# Mac. NOT `"brew:eza"` under [tools]: mise has no brew *tool backend* — that was the
+# invented mechanism in b132e83, and it aborts the entire apply.
+[bootstrap.packages]
+"brew:eza" = "latest"
 {{- end }}

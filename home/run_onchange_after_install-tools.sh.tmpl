@@ -4,3 +4,16 @@ set -eu
 export PATH="$HOME/.local/bin:$PATH"
 echo "==> Installing CLI tools via mise"
 mise install -y
+
+# Migration, one shot per machine: eza moved from [tools] to [bootstrap.packages] on macOS.
+# A machine that had the old mise-built eza keeps its shim in ~/.local/share/mise/shims,
+# which `mise reshim` does NOT remove; the shims dir precedes /opt/homebrew/bin on PATH
+# (dot_zshenv), so the dead shim shadows the brew eza and `ls` (aliased to eza) breaks
+# with "No version is set for shim". `prune <tool>` removes only versions no config
+# references, so on Linux — where eza is still a [tools] entry — it is a no-op.
+mise prune -y eza
+
+# Homebrew bottles declared in [bootstrap.packages] (macOS: eza). Idempotent; exits 0
+# with a one-line notice when the section is absent, which is the Linux/container case.
+echo "==> Applying bootstrap packages via mise"
+mise bootstrap packages apply -y
