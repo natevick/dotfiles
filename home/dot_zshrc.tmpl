@@ -47,6 +47,19 @@ _eval_cached() {
 
 # ---- mise (sync: tools must be on PATH before completions/prompt) ----
 _eval_cached mise mise activate zsh
+# mise's activate script installs two hooks: chpwd (re-resolve the env when the
+# directory changes) and precmd (fork `mise hook-env` before EVERY prompt, to catch
+# a mise.toml/.ruby-version edited in place without a cd). That precmd fork is
+# ~20ms here — half of it the Kandji ESF exec tax every process launch on this Mac
+# pays, none of it proportional to the tool list — and it runs after every command
+# you type. The in-place-edit case is rare and `cd .` (or `mise shell`) refreshes
+# it. Keep chpwd, drop precmd. The two *_ACTIVATE_* exports are scratch that the
+# precmd hook would have cleared on its first run; clear them so they don't leak
+# into every child process's environment.
+if (( $+functions[_mise_hook_precmd] )); then
+  add-zsh-hook -d precmd _mise_hook_precmd
+  unset __MISE_ZSH_ACTIVATE_PATH __MISE_ZSH_ACTIVATE_ENV
+fi
 
 # ---- zinit ----
 ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
