@@ -25,7 +25,7 @@ TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
 # gate, but a silent gap is indistinguishable from "nothing happened".
 NORM_AUDIT_LIB="${NORM_AUDIT_LIB:-$HOME/.local/lib/norm-audit.sh}"
 # shellcheck source=/dev/null
-[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB" || true
+[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB"
 
 _audit() {
   local event="$1" owner="${2:-}" token_file="${3:-}"
