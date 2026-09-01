@@ -24,10 +24,8 @@ TOKEN_DIR="${GITHUB_PAT_DIR:-$HOME/.config/github-pats}"
 # Fail-OPEN but LOUD, same reasoning as the credential helper: a record is not a
 # gate, but a silent gap is indistinguishable from "nothing happened".
 NORM_AUDIT_LIB="${NORM_AUDIT_LIB:-$HOME/.local/lib/norm-audit.sh}"
-if [ -r "$NORM_AUDIT_LIB" ]; then
-  # shellcheck source=/dev/null
-  . "$NORM_AUDIT_LIB"
-fi
+# shellcheck source=/dev/null
+[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB"
 
 _audit() {
   local event="$1" owner="${2:-}" token_file="${3:-}"
