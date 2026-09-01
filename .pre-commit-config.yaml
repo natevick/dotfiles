@@ -30,7 +30,7 @@ repos:
         language: system
         pass_filenames: false
       - id: shell-startup-budget
-        name: shell startup budget (median < 80ms)
+        name: shell startup budget (min of 9, exec-tax adjusted, < 80ms)
         entry: scripts/check-shell-startup.zsh
         language: script
         files: '^home/(dot_zshrc\.tmpl|dot_config/(zsh|mise)/)'

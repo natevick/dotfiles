@@ -7,8 +7,9 @@
 # mise` never reached mise.run and then died at `mise install`.
 #
 # MISE_MIN is the oldest release verified to parse this repo's config, not a
-# researched lower bound — the true minimum is somewhere below it. Erring high
-# only costs an occasional no-op upgrade.
+# researched lower bound — the true minimum is somewhere below it. One hard
+# requirement IS known: the [bootstrap.packages] brew manager that installs eza
+# on macOS arrived in 2026.6.6. Erring high only costs an occasional no-op upgrade.
 set -eu
 
 MISE_MIN="2026.8.2"
