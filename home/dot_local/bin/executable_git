@@ -19,7 +19,9 @@
 # invocation would be far worse than missing one force-push, so anything
 # unexpected delegates to the real binary rather than erroring. No `set -e`.
 
-AUDIT_LOG="${NORM_GH_AUDIT:-$HOME/.local/state/norm-gh-audit.jsonl}"
+NORM_AUDIT_LIB="${NORM_AUDIT_LIB:-$HOME/.local/lib/norm-audit.sh}"
+# shellcheck source=/dev/null
+[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB"
 
 # ── Resolve the real git ────────────────────────────────────────────────────
 # Same lesson as the gh wrapper: never accept a version-manager shim, or we
@@ -92,19 +94,12 @@ done
 
 # ── Record + notify ────────────────────────────────────────────────────────
 _audit() { # $1 = event, $2 = detail
-  local line argv_json="[]" first=1 a
-  for a in "$@"; do :; done
-  for a in "${_ORIG_ARGV[@]}"; do
-    a="${a//\\/\\\\}"; a="${a//\"/\\\"}"
-    if [ $first -eq 1 ]; then argv_json="[\"$a\""; first=0; else argv_json="$argv_json,\"$a\""; fi
-  done
-  [ $first -eq 0 ] && argv_json="$argv_json]"
-  printf -v line '{"ts":"%s","tool":"git-guard","event":"%s","detail":"%s","argv":%s,"pid":%d,"cwd":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$argv_json" "$$" "$PWD" 2>/dev/null || return 0
-  { mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null \
-    && { [ -e "$AUDIT_LOG" ] || { : >"$AUDIT_LOG" && chmod 0600 "$AUDIT_LOG"; } ; } 2>/dev/null \
-    && printf '%s' "$line" >>"$AUDIT_LOG" 2>/dev/null; } \
-    || printf 'git (norm wrapper): WARNING audit write failed\n' >&2
+  if ! declare -F norm_audit_emit >/dev/null 2>&1; then
+    printf 'git (norm wrapper): WARNING audit library missing (%s) — unaudited\n' \
+      "$NORM_AUDIT_LIB" >&2
+    return 0
+  fi
+  norm_audit_emit git-guard event "$1" detail "$2" -- "${_ORIG_ARGV[@]}"
 }
 _ORIG_ARGV=("$@")
 

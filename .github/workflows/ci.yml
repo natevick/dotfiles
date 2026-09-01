@@ -18,7 +18,18 @@ jobs:
           # so they are the most consequential shell in the repo — they were
           # previously outside the linter's reach entirely.
           shellcheck home/dot_local/bin/*
+          shellcheck home/dot_local/lib/*.sh
+          shellcheck tests/*.sh
           shellcheck --shell=bash home/dot_claude/modify_settings.json
+
+  # The wrappers' audit records are the credential-use trail; a record that does
+  # not parse is a record that is not there. See tests/test-norm-audit.sh.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Audit-record encoding
+        run: ./tests/test-norm-audit.sh
 
   # Acceptance gate from the migration design: a throwaway container applies the
   # repo non-interactively via install.sh and lands a working shell.
@@ -52,7 +63,7 @@ jobs:
   # On failure, hand the context to the norm-webhooks server (tailnet-only) so it can
   # attempt an auto-fix. Runs only when a needed job failed; needs no secrets in this file.
   report-failure:
-    needs: [shellcheck, bootstrap]
+    needs: [shellcheck, tests, bootstrap]
     if: failure()
     runs-on: ubuntu-latest
     permissions:
