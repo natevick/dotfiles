@@ -38,6 +38,7 @@ Library/**
 .local/bin/gh
 .local/bin/git
 .local/bin/git-credential-github-org
+.local/lib/norm-audit.sh
 {{ end }}
 
 # cmux is a macOS app; its dock.json (with ssh -t commands run FROM the Mac) only
