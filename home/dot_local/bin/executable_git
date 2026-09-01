@@ -20,8 +20,10 @@
 # unexpected delegates to the real binary rather than erroring. No `set -e`.
 
 NORM_AUDIT_LIB="${NORM_AUDIT_LIB:-$HOME/.local/lib/norm-audit.sh}"
-# shellcheck source=/dev/null
-[ -r "$NORM_AUDIT_LIB" ] && . "$NORM_AUDIT_LIB"
+if [ -r "$NORM_AUDIT_LIB" ]; then
+  # shellcheck source=/dev/null
+  . "$NORM_AUDIT_LIB"
+fi
 
 # ── Resolve the real git ────────────────────────────────────────────────────
 # Same lesson as the gh wrapper: never accept a version-manager shim, or we
