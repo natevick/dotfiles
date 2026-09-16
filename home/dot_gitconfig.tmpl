@@ -8,12 +8,19 @@
 	editor = vim
 [init]
 	defaultBranch = main
+{{- /* Absolute path on macOS: Homebrew runs git with a stripped PATH (system
+     dirs only), so a bare `gh` is "command not found" during `brew update` and
+     private taps fail to fetch. */ -}}
+{{- $gh := "gh" }}
+{{- if eq .chezmoi.os "darwin" }}
+{{-   $gh = ternary "/opt/homebrew/bin/gh" "/usr/local/bin/gh" (eq .chezmoi.arch "arm64") }}
+{{- end }}
 [credential "https://github.com"]
 	helper =
-	helper = !gh auth git-credential
+	helper = !{{ $gh }} auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = !gh auth git-credential
+	helper = !{{ $gh }} auth git-credential
 {{- if .agent }}
 # ── Agent hosts only: per-org fine-grained GitHub PATs ──────────────────────
 # An agent account holds one fine-grained PAT per GitHub org under
