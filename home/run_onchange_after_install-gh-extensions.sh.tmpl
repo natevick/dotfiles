@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+{{- if not .container }}
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+command -v gh >/dev/null 2>&1 || exit 0
+
+if [ -z "${GH_TOKEN:-}" ] && [ -r "$HOME/.config/github-pats/natevick" ]; then
+  GH_TOKEN="$(cat "$HOME/.config/github-pats/natevick")"
+  export GH_TOKEN
+fi
+
+set -- GitHubSecurityLab/gh-secure
+for ext in "$@"; do
+  name="${ext#*/}"
+  if gh extension list 2>/dev/null | awk '{print $3}' | grep -qx "$ext"; then
+    echo "==> gh extension $name already installed"
+  else
+    echo "==> Installing gh extension $ext"
+    gh extension install "$ext" || echo "!!! $name install failed — skipping" >&2
+  fi
+done
+{{- end }}
