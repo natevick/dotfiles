@@ -1,9 +1,10 @@
 # ---- listing (eza with native fallback) ----
+unalias ls ll la lt cat 2>/dev/null
 if command -v eza &>/dev/null; then
-  alias ls='eza --group-directories-first'
-  alias ll='eza -lah --git --group-directories-first'
-  alias la='eza -a'
-  alias lt='eza --tree --level=2'
+  function ls { if [[ -t 0 ]]; then eza --group-directories-first "$@"; else command ls "$@"; fi }
+  function ll { if [[ -t 0 ]]; then eza -lah --git --group-directories-first "$@"; else command ls -alhF "$@"; fi }
+  function la { if [[ -t 0 ]]; then eza -a "$@"; else command ls -A "$@"; fi }
+  function lt { if [[ -t 0 ]]; then eza --tree --level=2 "$@"; else eza --tree --level=2 "${@:-.}" </dev/null; fi }
 else
   alias ls='ls --color=auto'
   alias ll='ls -alhF'
@@ -26,8 +27,9 @@ elif command -v xclip &>/dev/null; then
 fi
 
 # ---- bat as cat (syntax highlighting; auto-plain when piped) ----
-# Aliases are interactive-only, so scripts still get the real `cat`.
-command -v bat &>/dev/null && alias cat='bat --paging=never'
+if command -v bat &>/dev/null; then
+  function cat { if [[ -t 1 ]]; then bat --paging=never "$@"; else command cat "$@"; fi }
+fi
 
 # ---- fzf: use fd as the source (fast, .gitignore-aware) with bat/eza previews ----
 if command -v fd &>/dev/null; then

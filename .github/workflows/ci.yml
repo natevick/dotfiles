@@ -30,6 +30,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: Audit-record encoding
         run: ./tests/test-norm-audit.sh
+      - name: ls/cat wrappers on non-terminal stdio
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh
+          ./tests/test-zsh-aliases.sh
 
   # Acceptance gate from the migration design: a throwaway container applies the
   # repo non-interactively via install.sh and lands a working shell.
