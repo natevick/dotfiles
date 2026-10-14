@@ -26,7 +26,7 @@ Modern CLI tools are installed via [mise](https://mise.jdx.dev) (`~/.config/mise
 `fzf`, `eza`, `bat`, `fd`, `ripgrep`, `zoxide`, `starship`. On macOS `eza` is a Homebrew bottle that
 mise installs itself (`[bootstrap.packages]` → `mise bootstrap packages apply`), because upstream
 ships no macOS binary; it lands in `/opt/homebrew` with a normal brew receipt. `tmux` and `vim` (the git editor) are
-installed by the bootstrap via the native package manager (brew/apt/dnf/apk) when missing —
+installed by the bootstrap via the native package manager (brew/apt/dnf/apk/pacman) when missing —
 the only true prerequisites are `zsh`, `git`, and `curl`. All shell wiring lives in
 `home/dot_config/zsh/aliases.zsh` and is `command -v`-guarded, so anything missing degrades to the
 native command.

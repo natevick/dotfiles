@@ -27,6 +27,9 @@ elif command -v dnf >/dev/null 2>&1; then
 elif command -v apk >/dev/null 2>&1; then
   echo "==> Installing via apk:$PKGS"
   $SUDO apk add $PKGS || echo "==> apk failed; install manually:$PKGS" >&2
+elif command -v pacman >/dev/null 2>&1; then
+  echo "==> Installing via pacman:$PKGS"
+  $SUDO pacman -S --needed --noconfirm $PKGS || echo "==> pacman failed (no sudo?); install manually:$PKGS" >&2
 else
   echo "==> No known package manager; install manually:$PKGS" >&2
 fi
