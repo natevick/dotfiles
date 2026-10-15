@@ -1,2 +1,6 @@
 [ui.toast]
 delivery = "terminal"
+
+[ui]
+agent_panel_sort = "priority"
+status_indicators = "symbols"
