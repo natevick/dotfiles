@@ -47,6 +47,11 @@ key-mapping.preset = 'qwerty'
 # See https://nikitabobko.github.io/AeroSpace/commands#move-mouse
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 
+# Ghostty ⌘T opens windows, not native tabs (AeroSpace#68); stack them on workspace 1.
+[[on-window-detected]]
+    if.app-id = 'com.mitchellh.ghostty'
+    run = ['move-node-to-workspace 1', 'layout h_accordion']
+
 [[on-window-detected]]
     if.app-id = 'com.tinyspeck.slackmacgap'
     run = 'move-node-to-workspace 3'
@@ -101,6 +106,20 @@ outer.left =       5
 outer.bottom =     5
 outer.top =        5
 outer.right =      5
+
+# Named workspaces live on the external display; the laptop screen gets 10+. No external = no match = laptop.
+[workspace-to-monitor-force-assignment]
+    '0' = '^(?!built-in)'
+    '1' = '^(?!built-in)'
+    '2' = '^(?!built-in)'
+    '3' = '^(?!built-in)'
+    '4' = '^(?!built-in)'
+    '5' = '^(?!built-in)'
+    '6' = '^(?!built-in)'
+    '7' = '^(?!built-in)'
+    '8' = '^(?!built-in)'
+    '9' = '^(?!built-in)'
+    'M' = '^(?!built-in)'
 
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
