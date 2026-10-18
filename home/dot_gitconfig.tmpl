@@ -6,6 +6,12 @@
 [core]
 	excludesfile = ~/.gitignore_global
 	editor = vim
+	untrackedCache = true
+{{- if eq .chezmoi.os "darwin" }}
+	# Builtin file-watcher daemon (macOS/Windows only): `git status` in a 28k-file repo
+	# 206ms -> 61ms, which starship's git_status pays on every prompt.
+	fsmonitor = true
+{{- end }}
 [init]
 	defaultBranch = main
 {{- /* Absolute path on macOS: Homebrew runs git with a stripped PATH (system
