@@ -9,3 +9,11 @@ export PATH="$HOME/.local/bin:$PATH"
 # `command -v bat/eza` get captured interactively, then break in
 # non-interactive execution where the shims are missing from PATH.
 [[ -d "$HOME/.local/share/mise/shims" ]] && export PATH="$HOME/.local/share/mise/shims:$PATH"
+
+# On Linux hosts where /tmp is RAM-backed tmpfs, keep temp files on disk:
+# agents build and clone into $TMPDIR, and filling /tmp exhausts RAM and swap.
+if [[ $OSTYPE == linux* && -z $TMPDIR ]] && [[ $(stat -f -c %T /tmp 2>/dev/null) == tmpfs ]]; then
+  export TMPDIR="/var/tmp/$USER"
+  [[ -d $TMPDIR ]] || mkdir -m 700 -p "$TMPDIR"
+  export CLAUDE_CODE_TMPDIR="$TMPDIR"
+fi
