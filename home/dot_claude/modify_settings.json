@@ -29,6 +29,10 @@ merged=$(printf '%s' "$current" | "$JQ" '
   | .agentPushNotifEnabled    = true
   | .remoteControlAtStartup   = true
   | .skipAutoPermissionPrompt = true
+  | .env = ((.env // {}) + {
+      "ENABLE_PROMPT_CACHING_1H": "1",
+      "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "400000"
+    })
 ' 2>/dev/null)
 
 # On any jq error (malformed input), leave the file untouched rather than wipe it.
