@@ -108,6 +108,14 @@ sync_repo() {
 
   g fetch -q origin || { problem "$name: fetch failed (offline?) — not pushed"; return; }
   if upstream=$(g rev-parse -q --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null); then
+    # A squash-merged sync PR leaves local commits whose content upstream already has. Same
+    # tree means nothing can be lost, so drop them rather than rebase into conflicts.
+    if g diff --quiet "$upstream" HEAD --; then
+      if [ "$(g rev-list --count "$upstream..HEAD")" -gt 0 ] && g reset -q --keep "$upstream"; then
+        log "$name: local commits already upstream, reset to $upstream"
+      fi
+      return
+    fi
     if ! g rebase -q "$upstream" >/dev/null 2>&1; then
       g rebase --abort >/dev/null 2>&1
       problem "$name: rebase onto $upstream conflicts — committed locally, not pushed"
@@ -115,10 +123,38 @@ sync_repo() {
     fi
     ahead=$(g rev-list --count "$upstream..HEAD")
     [ "$ahead" -gt 0 ] || return
-    if g push -q; then log "$name: pushed $ahead commit(s) to $upstream"; else problem "$name: push to $upstream failed"; fi
+    if out=$(g push -q 2>&1); then
+      log "$name: pushed $ahead commit(s) to $upstream"
+      return
+    fi
+    case "$out" in
+      *"through a pull request"*) push_via_pr "$dir" "$name" "$upstream" ;;
+      *) printf '%s\n' "$out" >&2; problem "$name: push to $upstream failed" ;;
+    esac
   else
     if g push -q -u origin "$branch"; then log "$name: pushed new branch $branch"; else problem "$name: push of $branch failed"; fi
   fi
+}
+
+# $upstream only takes changes through PRs (a repo ruleset). Mirror local work to sync/<branch>
+# and keep one PR open for it; local stays ahead until it merges, and the next run reconciles.
+push_via_pr() {
+  dir=$1 name=$2 upstream=$3
+  base=${upstream#origin/}
+  head="sync/$base"
+  if ! git -C "$dir" push -q --force-with-lease origin "HEAD:refs/heads/$head" 2>/dev/null; then
+    problem "$name: $base requires PRs and pushing $head failed"
+    return
+  fi
+  pr=$(cd "$dir" && gh pr list --head "$head" --state open --json url -q '.[0].url' 2>/dev/null)
+  if [ -z "$pr" ]; then
+    body="Opened by \`dotfiles-sync\`: \`$base\` only takes changes through PRs, so local work is mirrored to \`$head\`. Later runs force-push here to keep this PR current; after it merges (any method) the next run reconciles the local clone.
+
+$(git -C "$dir" log --reverse --format='- %s' "$upstream..HEAD")"
+    pr=$(cd "$dir" && gh pr create --base "$base" --head "$head" --title "chore(sync): changes captured on a synced machine" --body "$body" 2>&1) ||
+      { problem "$name: pushed $head but opening its PR failed: $pr"; return; }
+  fi
+  problem "$name: $base requires PRs — local work is on GitHub, awaiting merge: $pr"
 }
 
 DRIFT_OUT=$(mktemp)
