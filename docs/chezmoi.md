@@ -34,6 +34,7 @@ Two auto-detected dimensions + one prompt, set at `chezmoi init` in `home/.chezm
 
 - **Drift nudge**: `.zshrc` checks `chezmoi status` in a detached background job at most once a day and prints a one-shot warning at the next shell start if the machine drifted from the source.
 - **Memory backup** (macOS): a launchd agent (`com.natevick.claude-memory-backup`, daily 10:15) mirrors `~/.claude/projects/*/memory` into the private `dotfiles-work` repo and pushes. Script: `~/.local/bin/claude-memory-backup`; log: `/tmp/claude-memory-backup.log`.
+- **Hourly sync**: `repo-sync` fast-forwards every clone under `$HOME` plus the chezmoi source, then `chezmoi apply`s (systemd `repo-sync.timer` on Linux, launchd `com.natevick.repo-sync` on macOS). On macOS the agent first runs `dotfiles-sync`, the push half: it re-adds chezmoi drift that changed *only* on the machine, then commits, rebases and pushes `~/.dotfiles`, `~/.dotfiles-work` and `~/Projects/personal/scripts`. Both-sides drift, template drift, rebase conflicts and hook-blocked commits are reported, never forced — status in `~/.local/state/{dotfiles,repo}-sync.status`, log `/tmp/repo-sync.log`, macOS notification when the push-side problem set changes.
 - **Dependabot** PRs GitHub Actions bumps weekly; CI validates them.
 
 ## Traps

@@ -1,0 +1,145 @@
+#!/bin/sh
+# Makes sure GitHub has everything this machine has: dotfiles, the private overlay (Claude
+# harness, work tools), and any chezmoi drift. Runs hourly on macOS as the push half of
+# launchd's com.natevick.repo-sync — this pushes local work first, then repo-sync fast-forwards
+# and applies. Safe to run by hand.
+#
+#   1. chezmoi drift — a managed file edited ONLY on this machine is re-added to the source.
+#      "Only" is checked, not assumed: the source must still render to exactly what chezmoi
+#      last wrote. If both sides changed, or the file is a template/modify_ script, re-add
+#      would clobber the other side, so it is reported and left alone.
+#   2. Every repo — commit whatever is dirty, rebase onto upstream, push. Hooks (gitleaks)
+#      are never bypassed: a blocked commit is reported, not forced.
+#
+# Anything it can't resolve lands in the status file, stderr (the launchd log), and a macOS
+# notification (only when the set of problems changes, so a standing conflict nags once).
+#
+#   check it:  cat "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-sync.status"
+#   log:       /tmp/repo-sync.log
+#
+# No `set -e`: one stuck repo must not stop the others from syncing. Failures are handled
+# per step and collected in $PROBLEMS.
+set -u
+
+# launchd has a bare PATH — hooks (pre-commit/gitleaks via mise), chezmoi, jq and gh need these
+PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+STATUS="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-sync.status"
+# override (space-separated, may be empty) to test against throwaway repos
+REPOS="${DOTFILES_SYNC_REPOS-$HOME/.dotfiles $HOME/.dotfiles-work $HOME/Projects/personal/scripts}"
+PROBLEMS=""
+
+log() { printf '%s %s\n' "$(date +%H:%M:%S)" "$1"; }
+problem() {
+  PROBLEMS="${PROBLEMS}- $1
+"
+  printf 'dotfiles-sync: %s\n' "$1" >&2
+}
+
+capture_chezmoi_drift() {
+  command -v chezmoi >/dev/null 2>&1 || { problem "chezmoi not on PATH — drift not checked"; return; }
+  command -v jq >/dev/null 2>&1 || { problem "jq not on PATH — drift not checked"; return; }
+  status=$(chezmoi status 2>&1) || { problem "chezmoi status failed: $status"; return; }
+
+  # Column 1 = target changed since chezmoi last wrote it, i.e. a local edit.
+  printf '%s\n' "$status" | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    local_change=$(printf '%s' "$line" | cut -c1)
+    rel=$(printf '%s' "$line" | cut -c4-)
+    target="$HOME/$rel"
+    case "$local_change" in
+      " " | R) continue ;; # untouched locally (source-side change awaiting apply) / script
+      M) ;;
+      *) echo "PROBLEM $rel: locally '$local_change' (added/deleted) — resolve by hand"; continue ;;
+    esac
+    [ -f "$target" ] && [ ! -L "$target" ] || continue
+
+    src=$(chezmoi source-path "$target" 2>/dev/null)
+    case "$(basename "$src")" in
+      *.tmpl | modify_*) echo "PROBLEM $rel: edited locally but its source is $(basename "$src") — port by hand"; continue ;;
+    esac
+
+    written=$(chezmoi state get --bucket=entryState --key="$target" 2>/dev/null | jq -r '.contentsSHA256 // empty')
+    rendered=$(chezmoi cat "$target" 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+    if [ -n "$written" ] && [ "$written" = "$rendered" ]; then
+      if chezmoi re-add "$target"; then
+        echo "CAPTURED $rel"
+      else
+        echo "PROBLEM $rel: chezmoi re-add failed"
+      fi
+    else
+      echo "PROBLEM $rel: changed both locally and in source — merge by hand (chezmoi diff)"
+    fi
+  done >"$DRIFT_OUT"
+
+  grep '^CAPTURED ' "$DRIFT_OUT" | while IFS= read -r l; do log "chezmoi: ${l#CAPTURED }"; done
+  while IFS= read -r l; do
+    [ -n "$l" ] || continue
+    problem "chezmoi: ${l#PROBLEM }"
+  done <<EOF
+$(grep '^PROBLEM ' "$DRIFT_OUT")
+EOF
+}
+
+sync_repo() {
+  dir=$1
+  name=$(basename "$dir")
+  [ -d "$dir/.git" ] || { log "$name: not cloned here, skipped"; return; }
+  g() { git -C "$dir" "$@"; }
+
+  branch=$(g symbolic-ref --short -q HEAD) || { problem "$name: detached HEAD — not touched"; return; }
+  gitdir=$(g rev-parse --absolute-git-dir)
+  if [ -d "$gitdir/rebase-merge" ] || [ -d "$gitdir/rebase-apply" ] || [ -f "$gitdir/MERGE_HEAD" ]; then
+    problem "$name: rebase/merge in progress — not touched"
+    return
+  fi
+
+  if [ -n "$(g status --porcelain)" ]; then
+    msg="chore(sync): auto-commit $(date '+%Y-%m-%d %H:%M')"
+    g add -A
+    # hygiene hooks may auto-fix files on the first try; re-add and retry once
+    if ! g commit -qm "$msg" && ! { g add -A && g commit -qm "$msg"; }; then
+      problem "$name: commit blocked (hooks?) — uncommitted work remains on $branch; see /tmp/repo-sync.log"
+      return
+    fi
+    log "$name: committed local changes on $branch"
+  fi
+
+  g fetch -q origin || { problem "$name: fetch failed (offline?) — not pushed"; return; }
+  if upstream=$(g rev-parse -q --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null); then
+    if ! g rebase -q "$upstream" >/dev/null 2>&1; then
+      g rebase --abort >/dev/null 2>&1
+      problem "$name: rebase onto $upstream conflicts — committed locally, not pushed"
+      return
+    fi
+    ahead=$(g rev-list --count "$upstream..HEAD")
+    [ "$ahead" -gt 0 ] || return
+    if g push -q; then log "$name: pushed $ahead commit(s) to $upstream"; else problem "$name: push to $upstream failed"; fi
+  else
+    if g push -q -u origin "$branch"; then log "$name: pushed new branch $branch"; else problem "$name: push of $branch failed"; fi
+  fi
+}
+
+DRIFT_OUT=$(mktemp)
+trap 'rm -f "$DRIFT_OUT"' EXIT
+
+log "--- dotfiles-sync start"
+capture_chezmoi_drift # before the repo loop, so captured files ride this run's commit
+for repo in $REPOS; do sync_repo "$repo"; done
+
+mkdir -p "$(dirname "$STATUS")"
+previous=$(sed 1d "$STATUS" 2>/dev/null)
+if [ -z "$PROBLEMS" ]; then
+  printf '%s OK\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$STATUS"
+  log "--- dotfiles-sync OK"
+  exit 0
+fi
+
+printf '%s FAILED\n%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PROBLEMS" >"$STATUS"
+if [ "$(printf '%s' "$PROBLEMS" | sed '/^$/d')" != "$previous" ] && command -v osascript >/dev/null 2>&1; then
+  count=$(printf '%s' "$PROBLEMS" | grep -c '^- ')
+  osascript -e "display notification \"$count problem(s) — cat $STATUS\" with title \"dotfiles-sync\"" 2>/dev/null || true
+fi
+log "--- dotfiles-sync FAILED"
+exit 1

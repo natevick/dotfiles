@@ -8,7 +8,7 @@
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>"$HOME/.local/bin/repo-sync"</string>
+		<string>"$HOME/.local/bin/dotfiles-sync"; "$HOME/.local/bin/repo-sync"</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>3600</integer>
