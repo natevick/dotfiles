@@ -123,6 +123,13 @@ sync_repo() {
     fi
     ahead=$(g rev-list --count "$upstream..HEAD")
     [ "$ahead" -gt 0 ] || return
+    # Once a branch has needed a sync PR, never push to it directly again: GitHub accepts a
+    # direct push that matches an open, mergeable PR's head and marks the PR merged — which
+    # would turn the review gate into a one-hour delay.
+    if g rev-parse -q --verify "refs/remotes/origin/sync/${upstream#origin/}" >/dev/null; then
+      push_via_pr "$dir" "$name" "$upstream"
+      return
+    fi
     if out=$(g push -q 2>&1); then
       log "$name: pushed $ahead commit(s) to $upstream"
       return
