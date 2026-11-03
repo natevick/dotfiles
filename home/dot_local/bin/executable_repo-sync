@@ -1,0 +1,65 @@
+#!/bin/sh
+# Keeps every git clone directly under $HOME and the chezmoi source current.
+# Runs hourly from systemd (repo-sync.timer) or launchd
+# (com.natevick.repo-sync); safe to run by hand.
+#
+# Only fast-forwards. A repo is skipped, with a note, when it is off its
+# default branch, has no upstream, or has uncommitted changes to tracked
+# files. Untracked files don't block a pull.
+#
+#   check it:  cat "${XDG_STATE_HOME:-$HOME/.local/state}/repo-sync.status"
+set -u
+
+STATUS="${XDG_STATE_HOME:-$HOME/.local/state}/repo-sync.status"
+PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+lines=""
+failed=0
+record() { lines="$lines$1
+"; }
+fail() { failed=1; record "FAILED $1"; printf 'repo-sync: FAILED %s\n' "$1" >&2; }
+
+# Prints why $1 can't be fast-forwarded, or nothing when it can.
+blocker() {
+  branch=$(git -C "$1" symbolic-ref -q --short HEAD) || { echo "detached HEAD"; return; }
+  git -C "$1" rev-parse -q --verify '@{u}' >/dev/null 2>&1 || { echo "$branch has no upstream"; return; }
+  default=$(git -C "$1" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)
+  default=${default#origin/}
+  [ -z "$default" ] || [ "$branch" = "$default" ] || { echo "on $branch, not $default"; return; }
+  git -C "$1" diff --quiet HEAD -- 2>/dev/null || { echo "uncommitted changes on $branch"; return; }
+}
+
+# Fetches $1 and fast-forwards it when nothing blocks. Returns 1 on a skip.
+sync() {
+  name=${1#"$HOME"/}
+  if ! git -C "$1" fetch -q --prune 2>/dev/null; then fail "$name: fetch"; return 1; fi
+  why=$(blocker "$1")
+  if [ -n "$why" ]; then record "SKIPPED $name: $why"; return 1; fi
+  before=$(git -C "$1" rev-parse --short HEAD)
+  if ! git -C "$1" merge -q --ff-only '@{u}' >/dev/null 2>&1; then fail "$name: not a fast-forward"; return 1; fi
+  after=$(git -C "$1" rev-parse --short HEAD)
+  if [ "$before" = "$after" ]; then record "CURRENT $name $after"; else record "UPDATED $name $before..$after"; fi
+}
+
+src=$(chezmoi source-path 2>/dev/null) && root=$(git -C "$src" rev-parse --show-toplevel 2>/dev/null) || root=""
+if [ -n "$root" ]; then
+  # Apply only from a clean, current default branch, so a half-finished edit in
+  # the source never lands in $HOME.
+  if sync "$root"; then
+    chezmoi apply --no-tty >/dev/null 2>&1 || fail "chezmoi apply (run 'chezmoi apply' by hand to see why)"
+  fi
+else
+  fail "no chezmoi source"
+fi
+
+for d in "$HOME"/* "$HOME"/.[!.]*; do
+  [ -d "$d/.git" ] || [ -f "$d/.git" ] || continue
+  [ "$d" = "$root" ] && continue
+  sync "$d"
+done
+
+mkdir -p "$(dirname "$STATUS")" 2>/dev/null || true
+printf '%s\n%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$lines" >"$STATUS" 2>/dev/null || true
+printf '%s' "$lines"
+exit "$failed"
