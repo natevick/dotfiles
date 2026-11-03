@@ -52,7 +52,7 @@ export PATH
 # is worse than no mirror. Only the pull is allowed to fail (another machine may have pushed,
 # or we may be offline).
 cd "$WORK"
-git pull --rebase -q origin main 2>/dev/null || true
+git pull --rebase --autostash -q origin main 2>/dev/null || true
 
 found=0
 files=0
