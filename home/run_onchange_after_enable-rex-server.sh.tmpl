@@ -1,0 +1,7 @@
+{{ if and (eq .chezmoi.os "linux") (not .container) (stat "/usr/lib/systemd/user/rex.socket") -}}
+#!/bin/sh
+set -eu
+XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export XDG_RUNTIME_DIR
+exec /usr/bin/rex server install
+{{ end -}}
