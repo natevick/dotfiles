@@ -1,16 +1,16 @@
-{{ if and (eq .chezmoi.os "linux") (not .agent) (not .container) (lookPath "rex") -}}
+{{ if and (eq .chezmoi.os "linux") (not .agent) (not .container) (stat "/usr/lib/systemd/user/rex.socket") -}}
 #!/bin/sh
 # Starts the personal Rex server at boot, using the user units the rex package
-# ships. Renders empty until rex is installed, so it runs on the first apply
-# after that. Boot-time start also needs lingering, which
-# run_onchange_after_enable-systemd-timers.sh turns on.
+# ships. Renders empty until those units are installed, so it runs on the first
+# apply after that. The guard is the unit file, not `rex` on the PATH, because
+# Ubuntu ships an unrelated `rex` package. Boot-time start also needs lingering,
+# which run_onchange_after_enable-systemd-timers.sh turns on.
 #
 # The socket is enabled alongside the service: with the service alone, a
 # `rex server stop` leaves the next rex command to spawn a throwaway server
 # outside systemd.
 set -eu
 command -v systemctl >/dev/null 2>&1 || exit 0
-systemctl --user cat rex.socket rex.service >/dev/null 2>&1 || exit 0
 systemctl --user enable rex.socket rex.service
 # A server already on the socket may hold live sessions, and starting rex.socket
 # would take the socket from it. Leave it; the units take over at the next boot.
