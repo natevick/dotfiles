@@ -1,0 +1,9 @@
+{{ if and (eq .chezmoi.os "linux") (not .container) -}}
+#!/bin/sh
+set -eu
+[ -f /usr/lib/systemd/user/rex.socket ] || exit 0
+command -v systemctl >/dev/null 2>&1 || exit 0
+XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export XDG_RUNTIME_DIR
+/usr/bin/rex server install || echo "==> rex server install failed; run it by hand" >&2
+{{ end -}}
