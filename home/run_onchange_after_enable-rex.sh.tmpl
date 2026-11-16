@@ -1,0 +1,23 @@
+{{ if and (eq .chezmoi.os "linux") (not .agent) (not .container) (lookPath "rex") -}}
+#!/bin/sh
+# Starts the personal Rex server at boot, using the user units the rex package
+# ships. Renders empty until rex is installed, so it runs on the first apply
+# after that. Boot-time start also needs lingering, which
+# run_onchange_after_enable-systemd-timers.sh turns on.
+#
+# The socket is enabled alongside the service: with the service alone, a
+# `rex server stop` leaves the next rex command to spawn a throwaway server
+# outside systemd.
+set -eu
+command -v systemctl >/dev/null 2>&1 || exit 0
+systemctl --user cat rex.socket rex.service >/dev/null 2>&1 || exit 0
+systemctl --user enable rex.socket rex.service
+# A server already on the socket may hold live sessions, and starting rex.socket
+# would take the socket from it. Leave it; the units take over at the next boot.
+if systemctl --user is-active --quiet rex.socket || [ ! -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rex/server.sock" ]; then
+  systemctl --user start rex.socket rex.service
+  echo "==> rex personal server enabled and running"
+else
+  echo "==> rex personal server enabled; an existing server holds the socket, so the units start at next boot"
+fi
+{{ end -}}
