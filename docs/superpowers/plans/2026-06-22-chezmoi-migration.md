@@ -18,7 +18,7 @@
 - **Non-interactive containers:** `install.sh` adds `--promptDefaults` when stdin is not a TTY or a container is detected. Init must never block on a prompt.
 - **Safety:** old rcm files (`zshrc`, `gitconfig`, `tmux.conf`, `*.sh`, `config/`, `host-docker/`, `docker/`, `Xresources`, `xprofile`) stay in the repo until macOS + Linux + a throwaway container are all verified (Task 7).
 - **Repo:** `github.com/natevick/dotfiles`. Remote bootstrap: `sh -c "$(curl -fsSL https://get.chezmoi.io)" -- init --apply natevick`.
-- **Identity defaults:** name `Nate Vick`, email `nate.vick@clickfunnels.com`.
+- **Identity defaults:** name `Nate Vick`, email `nate@vick.codes`.
 - Work happens on branch `chezmoi-migration`. Commit after every task.
 
 ---
@@ -61,7 +61,7 @@ home
 {{- end -}}
 {{- /* Identity prompts (defaults make --promptDefaults non-interactive) */ -}}
 {{- $name := promptStringOnce . "name" "Full name for git" "Nate Vick" -}}
-{{- $email := promptStringOnce . "email" "Email for git" "nate.vick@clickfunnels.com" -}}
+{{- $email := promptStringOnce . "email" "Email for git" "nate@vick.codes" -}}
 {{- /* Containers are always headless; otherwise ask once */ -}}
 {{- $headless := $container -}}
 {{- if not $container -}}
@@ -81,7 +81,7 @@ home
 chezmoi init --source "$PWD" --promptDefaults
 chezmoi --source "$PWD" data --format json | grep -E '"(name|email|headless|container)"'
 ```
-Expected: JSON shows `"name": "Nate Vick"`, `"email": "nate.vick@clickfunnels.com"`, `"headless": false` (on this macOS workstation), `"container": false`. No prompt blocks.
+Expected: JSON shows `"name": "Nate Vick"`, `"email": "nate@vick.codes"`, `"headless": false` (on this macOS workstation), `"container": false`. No prompt blocks.
 
 - [ ] **Step 5: Verify container detection branch**
 
@@ -171,12 +171,12 @@ run '~/.tmux/plugins/tpm/tpm'
 ```sh
 chezmoi --source "$PWD" cat ~/.gitconfig
 ```
-Expected: `email = nate.vick@clickfunnels.com`, `editor = cursor --wait`, and `helper = !gh auth git-credential` (no absolute path).
+Expected: `email = nate@vick.codes`, `editor = cursor --wait`, and `helper = !gh auth git-credential` (no absolute path).
 
 - [ ] **Step 5: Verify headless + linux rendering of the editor line**
 
 ```sh
-chezmoi --source "$PWD" execute-template --init --promptString name="Nate Vick",email=nate.vick@clickfunnels.com '{{ if .headless }}vim{{ else if eq .chezmoi.os "darwin" }}cursor --wait{{ else }}code --wait{{ end }}'
+chezmoi --source "$PWD" execute-template --init --promptString name="Nate Vick",email=nate@vick.codes '{{ if .headless }}vim{{ else if eq .chezmoi.os "darwin" }}cursor --wait{{ else }}code --wait{{ end }}'
 ```
 Expected on this mac: `cursor --wait`. (On the Linux box this same template yields `code --wait`; in a container, `vim`.)
 
