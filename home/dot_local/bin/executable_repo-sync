@@ -1,9 +1,9 @@
 #!/bin/sh
-# Keeps every git clone directly under $HOME and the chezmoi source current.
-# Runs hourly from systemd (repo-sync.timer) or launchd
+# Keeps the chezmoi source current and applies it. Other repos are left alone:
+# keep them current yourself. Runs hourly from systemd (repo-sync.timer) or launchd
 # (com.natevick.repo-sync); safe to run by hand.
 #
-# Only fast-forwards. A repo is skipped, with a note, when it is off its
+# Only fast-forwards. The source is skipped, with a note, when it is off its
 # default branch, has no upstream, or has uncommitted changes to tracked
 # files. Untracked files don't block a pull.
 #
@@ -52,12 +52,6 @@ if [ -n "$root" ]; then
 else
   fail "no chezmoi source"
 fi
-
-for d in "$HOME"/* "$HOME"/.[!.]*; do
-  [ -d "$d/.git" ] || [ -f "$d/.git" ] || continue
-  [ "$d" = "$root" ] && continue
-  sync "$d"
-done
 
 mkdir -p "$(dirname "$STATUS")" 2>/dev/null || true
 printf '%s\n%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$lines" >"$STATUS" 2>/dev/null || true
