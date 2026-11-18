@@ -43,3 +43,8 @@ command -v bat &>/dev/null && \
 # Alt-C preview: tree of the candidate directory.
 command -v eza &>/dev/null && \
   export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
+
+# ---- tailscale (macOS app bundle ships the CLI off PATH) ----
+if ! command -v tailscale &>/dev/null && [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+  alias tailscale='/Applications/Tailscale.app/Contents/MacOS/Tailscale'
+fi
