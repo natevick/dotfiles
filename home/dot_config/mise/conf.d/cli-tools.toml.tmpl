@@ -14,6 +14,7 @@ fzf = "latest"
 zoxide = "latest"
 starship = "latest"
 jq = "latest"      # required by the Claude Code statusline script
+python = "3.13"   # natevick/harness guards need >=3.10; macOS ships 3.9
 {{- if not .container }}
 {{- if ne .chezmoi.os "darwin" }}
 eza = "latest"
