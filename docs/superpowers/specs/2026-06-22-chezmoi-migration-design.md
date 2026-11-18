@@ -139,7 +139,7 @@ Two auto-detected dimensions plus a one-time prompt; they compose into three eff
   (which implies `headless=true`).
 - **`.chezmoi.toml.tmpl` prompts once at `chezmoi init`** (via `promptStringOnce`, with defaults so
   `--promptDefaults` is fully non-interactive):
-  - `name` (default `Nate Vick`), `email` (default `nate.vick@clickfunnels.com`) — git identity.
+  - `name` (default `Nate Vick`), `email` (default `nate@vick.codes`) — git identity.
   - `headless` (bool) — server/SSH: skip GUI bits, force `vim` editor.
 
 | Effective profile | Trigger | Behavior |
