@@ -47,10 +47,10 @@ key-mapping.preset = 'qwerty'
 # See https://nikitabobko.github.io/AeroSpace/commands#move-mouse
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 
-# Ghostty ⌘T opens windows, not native tabs (AeroSpace#68); stack them on workspace 1.
+# Ghostty ⌘T opens windows, not native tabs (AeroSpace#68); tile them on workspace 1.
 [[on-window-detected]]
     if.app-id = 'com.mitchellh.ghostty'
-    run = ['move-node-to-workspace 1', 'layout h_accordion']
+    run = ['move-node-to-workspace 1', 'layout h_tiles']
 
 [[on-window-detected]]
     if.app-id = 'com.tinyspeck.slackmacgap'
