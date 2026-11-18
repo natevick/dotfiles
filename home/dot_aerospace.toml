@@ -47,10 +47,10 @@ key-mapping.preset = 'qwerty'
 # See https://nikitabobko.github.io/AeroSpace/commands#move-mouse
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 
-# Ghostty ⌘T opens windows, not native tabs (AeroSpace#68); stack them on workspace 1.
+# Ghostty ⌘T opens windows, not native tabs (AeroSpace#68); tile them on workspace 1.
 [[on-window-detected]]
     if.app-id = 'com.mitchellh.ghostty'
-    run = ['move-node-to-workspace 1', 'layout h_accordion']
+    run = ['move-node-to-workspace 1', 'layout h_tiles']
 
 [[on-window-detected]]
     if.app-id = 'com.tinyspeck.slackmacgap'
@@ -125,6 +125,8 @@ outer.right =      5
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 # 'main' binding mode must be always presented
 [mode.main.binding]
+alt-r = 'mode resize'
+alt-shift-c = 'reload-config'
 
 # All possible keys:
 # - Letters.        a, b, c, ..., z
@@ -224,9 +226,6 @@ alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
 # s = ['layout sticky tiling', 'mode main'] # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
 # f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
 # backspace = ['close-all-windows-but-current', 'mode main']
-alt-shift-c = 'reload-config'
-
-alt-r = 'mode resize'
 
 [mode.resize.binding]
 h = 'resize width -50'
