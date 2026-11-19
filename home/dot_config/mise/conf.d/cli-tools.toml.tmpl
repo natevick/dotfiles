@@ -28,6 +28,7 @@ node = "24"
 helix = "latest"
 bottom = "latest"    # `btm` — lighter, narrow-friendly
 herdr = "0.9.5"      # agent multiplexer; pinned because it is pre-1.0 and ships weekly
+op = "latest"
 {{- if eq .chezmoi.os "linux" }}
 "npm:@endevco/aube" = { version = "latest", npm_args = "--ignore-scripts=false" }   # aube — our Node package manager (jdx, same author as mise); its preinstall fetches the arch-specific binary
 "github:aristocratos/btop" = "latest"   # btop via github backend (aqua asset-match is broken, ubi deprecated); Linux release binaries only
@@ -47,4 +48,5 @@ herdr = "0.9.5"      # agent multiplexer; pinned because it is pre-1.0 and ships
 # invented mechanism in b132e83, and it aborts the entire apply.
 [bootstrap.packages]
 "brew:eza" = "latest"
+"brew:bash" = "latest"
 {{- end }}
